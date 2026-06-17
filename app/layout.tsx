@@ -25,18 +25,22 @@ export const metadata = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // ดึงข้อมูลผู้ใช้ปัจจุบันจาก Clerk
-  const user = await currentUser();
-
-  // ดึงข้อมูลความเกี่ยวข้องของลูกค้าและโรงแรมจาก Database
-  const member = user ? await getCurrentMember() : null;
+  let user = null;
+  let member = null;
+  try {
+    user = await currentUser();
+    member = user ? await getCurrentMember() : null;
+  } catch {
+    // Clerk ยังไม่พร้อมหรือไม่มี session — ปล่อย null ไป
+  }
 
   return (
-    <html
-      lang="th"
-      suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, inter.variable, geistHeading.variable)}
-    >
-      <ClerkProvider>
+    <ClerkProvider>
+      <html
+        lang="th"
+        suppressHydrationWarning
+        className={cn("antialiased", fontMono.variable, inter.variable, geistHeading.variable)}
+      >
         <body>
           <ThemeProvider>
             <TooltipProvider>
@@ -80,7 +84,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             </TooltipProvider>
           </ThemeProvider>
         </body>
-      </ClerkProvider>
-    </html>
+      </html>
+    </ClerkProvider>
   );
 }
