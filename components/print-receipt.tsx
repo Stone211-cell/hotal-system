@@ -40,7 +40,7 @@ interface BookingReceiptProps {
 }
 
 export function BookingReceiptModal({ open, onClose, hotelName = "โรงแรมของฉัน", booking }: BookingReceiptProps) {
-  const totalPaid = booking.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+  const totalPaid = booking.payments?.reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
   const balanceDue = booking.finalAmount - totalPaid;
 
   const handlePrint = () => {

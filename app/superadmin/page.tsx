@@ -233,10 +233,10 @@ export default function SuperAdminPage() {
 
   // คำนวณสรุป
   const totalHotels = data?.hotels.length || 0;
-  const totalRooms = data?.hotels.reduce((sum, h) => sum + h._count.rooms, 0) || 0;
+  const totalRooms = data?.hotels.reduce((sum: number, h: any) => sum + h._count.rooms, 0) || 0;
   const activeSaaSIncome = data?.hotels
     .filter((h) => h.subscriptionStatus === "ACTIVE" || h.subscriptionStatus === "TRIAL")
-    .reduce((sum, h) => sum + h.rentAmount, 0) || 0;
+    .reduce((sum: number, h: any) => sum + h.rentAmount, 0) || 0;
   const overdueCount = data?.hotels.filter((h) => h.subscriptionStatus === "OVERDUE").length || 0;
 
   return (

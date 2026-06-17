@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     });
 
     // คำนวณยอดรวมที่ชำระแล้ว
-    const totalPaid = booking.payments.reduce((sum, p) => sum + p.amount, 0) + Number(amount);
+    const totalPaid = booking.payments.reduce((sum: number, p: any) => sum + p.amount, 0) + Number(amount);
 
     // อัพเดท payment status
     let paymentStatus: "UNPAID" | "PARTIAL" | "PAID" = "UNPAID";
