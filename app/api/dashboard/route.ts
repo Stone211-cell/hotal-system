@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
           paidAt: { gte: from, lte: to },
         },
       });
-      totalIncome = payments.reduce((sum, p) => sum + p.amount, 0);
+      totalIncome = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
 
       // รายจ่ายในช่วงเวลา
       const expenses = await prisma.expense.findMany({
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           date: { gte: from, lte: to },
         },
       });
-      totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+      totalExpense = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
     }
 
     // การจองในช่วงเวลาเฉพาะของโรงแรมนี้
