@@ -1,0 +1,321 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// โมเดลสำหรับโรงแรม/ผู้เช่าระบบ (Tenants)
+model Hotel {
+  id                 String             @id @default(cuid())
+  name               String
+  description        String?
+  logoUrl            String?
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  nextBillingDate    DateTime?
+  overdueMonths      Int                @default(0)
+  rentAmount         Float              @default(0) // ค่าเช่าระบบต่อเดือน
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  rooms     Room[]
+  roomTypes RoomType[]
+  guests    Guest[]
+  bookings  Booking[]
+  contracts Contract[]
+  expenses  Expense[]
+  members   HotelMember[]
+  maintenances RoomMaintenance[]
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  OVERDUE
+  SUSPENDED
+}
+
+// โมเดลสำหรับพนักงานและเจ้าของโรงแรม (Users/Members)
+model HotelMember {
+  id                String     @id @default(cuid())
+  hotelId           String
+  hotel             Hotel      @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  userId            String?    // Clerk User ID (จะใส่เมื่อเข้าสู่ระบบครั้งแรก)
+  email             String     @unique // ใช้อีเมลเป็นหลักในการจับคู่ตอน Admin เพิ่มพนักงาน
+  name              String?
+  role              MemberRole @default(STAFF)
+  isActive          Boolean    @default(true)
+  
+  // สิทธิ์การเข้าถึงสำหรับ Staff (แอดมินหรือ Owner จะได้ทุกสิทธิ์อัตโนมัติ)
+  canManageRooms    Boolean    @default(false)
+  canManageBookings Boolean    @default(true)
+  canViewFinance    Boolean    @default(false)
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+enum MemberRole {
+  OWNER // เจ้าของโรงแรม (Hotel Admin)
+  STAFF // พนักงานโรงแรม
+}
+
+// ประเภทห้องพัก
+model RoomType {
+  id          String   @id @default(cuid())
+  hotelId     String
+  hotel       Hotel    @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  name        String   // เช่น Standard, Deluxe, Suite
+  description String?
+  basePrice   Float    // ราคาพื้นฐาน
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  rooms       Room[]
+}
+
+// ห้องพัก
+model Room {
+  id            String      @id @default(cuid())
+  hotelId       String
+  hotel         Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomNumber    String      // เลขห้อง
+  floor         Int?        // ชั้น
+  roomTypeId    String
+  roomType      RoomType    @relation(fields: [roomTypeId], references: [id])
+  pricePerNight Float       // ราคาต่อคืน (อาจต่างจาก basePrice)
+  status        RoomStatus  @default(AVAILABLE)
+  description   String?
+  amenities     String[]    @default([])
+  maxGuests     Int         @default(2)
+  notes         String?     // หมายเหตุห้องพัก (เช่น สภาพห้อง ประวัติลูกค้า ฯลฯ)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  bookings      Booking[]
+  contracts     Contract[]  // สัญญาเช่าสำหรับหอพัก
+  maintenances  RoomMaintenance[]
+
+  @@unique([hotelId, roomNumber]) // เลขห้องต้องไม่ซ้ำกันภายในโรงแรมเดียวกัน
+}
+
+enum RoomStatus {
+  AVAILABLE   // ว่าง
+  OCCUPIED    // มีผู้เข้าพัก
+  MAINTENANCE // ซ่อมบำรุง
+  RESERVED    // จองแล้ว
+}
+
+// ข้อมูลลูกค้า/ผู้เช่า
+model Guest {
+  id          String      @id @default(cuid())
+  hotelId     String
+  hotel       Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String
+  idNumber    String?     // เลขบัตรประชาชน/พาสปอร์ต
+  nationality String?     @default("Thai")
+  address     String?     // ที่อยู่ (สำหรับสัญญาเช่า)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  bookings    Booking[]
+  contracts   Contract[]  // สัญญาเช่าสำหรับหอพัก
+}
+
+// การจอง (ระบบโรงแรม)
+model Booking {
+  id             String        @id @default(cuid())
+  hotelId        String
+  hotel          Hotel         @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  bookingNumber  String        @default(cuid())
+  roomId         String
+  room           Room          @relation(fields: [roomId], references: [id])
+  guestId        String
+  guest          Guest         @relation(fields: [guestId], references: [id])
+  checkInDate    DateTime
+  checkOutDate   DateTime
+  actualCheckIn  DateTime?
+  actualCheckOut DateTime?
+  nights         Int
+  pricePerNight  Float
+  totalAmount    Float
+  discountAmount Float         @default(0)
+  finalAmount    Float
+  status         BookingStatus @default(PENDING)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  payments       Payment[]
+  expenses       Expense[]
+
+  @@unique([hotelId, bookingNumber]) // รหัสการจองไม่ซ้ำกันในโรงแรมเดียวกัน
+}
+
+enum BookingStatus {
+  PENDING     // รอยืนยัน
+  CONFIRMED   // ยืนยันแล้ว
+  CHECKED_IN  // เข้าพักแล้ว
+  CHECKED_OUT // ออกแล้ว
+  CANCELLED   // ยกเลิก
+}
+
+enum PaymentStatus {
+  UNPAID      // ยังไม่ชำระ
+  PARTIAL     // ชำระบางส่วน
+  PAID        // ชำระแล้ว
+  REFUNDED    // คืนเงินแล้ว
+}
+
+// การชำระเงิน (ระบบโรงแรม)
+model Payment {
+  id          String        @id @default(cuid())
+  bookingId   String
+  booking     Booking       @relation(fields: [bookingId], references: [id])
+  amount      Float
+  method      PaymentMethod
+  reference   String?       // reference number
+  note        String?
+  paidAt      DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CREDIT_CARD
+  QR_CODE
+}
+
+// รายจ่าย (ภาพรวม)
+model Expense {
+  id          String      @id @default(cuid())
+  hotelId     String
+  hotel       Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  bookingId   String?
+  booking     Booking?    @relation(fields: [bookingId], references: [id])
+  category    String      // ประเภทรายจ่าย
+  description String
+  amount      Float
+  date        DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+// ==========================================
+// ส่วนเพิ่มเติมสำหรับ ระบบหอพัก / อพาร์ทเม้นท์
+// ==========================================
+
+// สัญญาเช่าหอพัก
+model Contract {
+  id             String         @id @default(cuid())
+  hotelId        String
+  hotel          Hotel          @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  contractNumber String         @default(cuid())
+  roomId         String
+  room           Room           @relation(fields: [roomId], references: [id])
+  tenantId       String
+  tenant         Guest          @relation(fields: [tenantId], references: [id])
+  startDate      DateTime
+  endDate        DateTime
+  depositAmount  Float          // ค่ามัดจำ/ประกัน
+  rentAmount     Float          // ค่าเช่ารายเดือนตามสัญญา
+  status         ContractStatus @default(ACTIVE)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  bills          Bill[]         // บิลค่าเช่าแต่ละเดือน
+
+  @@unique([hotelId, contractNumber]) // รหัสสัญญาไม่ซ้ำกันในโรงแรมเดียวกัน
+}
+
+enum ContractStatus {
+  ACTIVE      // กำลังเช่า
+  EXPIRED     // หมดสัญญา
+  TERMINATED  // ยกเลิกสัญญา
+}
+
+// บิลรายเดือน (ค่าเช่า + ค่าน้ำ + ค่าไฟ)
+model Bill {
+  id                  String     @id @default(cuid())
+  billNumber          String     @unique @default(cuid())
+  contractId          String
+  contract            Contract   @relation(fields: [contractId], references: [id])
+  month               Int        // 1-12
+  year                Int
+  
+  rentAmount          Float      // ค่าเช่าห้อง
+  
+  waterCurrentUnit    Float?     // เลขมิเตอร์น้ำปัจจุบัน
+  waterPreviousUnit   Float?     // เลขมิเตอร์น้ำครั้งก่อน
+  waterAmount         Float      // ค่าน้ำ
+  
+  electricCurrentUnit Float?     // เลขมิเตอร์ไฟปัจจุบัน
+  electricPreviousUnit Float?    // เลขมิเตอร์ไฟครั้งก่อน
+  electricAmount      Float      // ค่าไฟ
+  
+  otherCharges        Float      @default(0) // ค่าใช้จ่ายอื่นๆ (เช่น ส่วนกลาง, อินเทอร์เน็ต)
+  otherChargesNote    String?    // หมายเหตุค่าใช้จ่ายอื่นๆ
+  
+  totalAmount         Float      // ยอดรวมทั้งหมด (rent + water + electric + other)
+  
+  dueDate             DateTime   // วันครบกำหนดชำระ
+  status              BillStatus @default(UNPAID)
+  paidAt              DateTime?
+  paymentMethod       PaymentMethod?
+  reference           String?    // สลิป / เลขอ้างอิงการจ่าย
+  
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+}
+
+enum BillStatus {
+  UNPAID      // ยังไม่จ่าย
+  PAID        // จ่ายแล้ว
+  OVERDUE     // ค้างชำระ (เกินกำหนด)
+}
+
+// โมเดลสำหรับเก็บข้อคิดเห็น/คำแนะนำส่งหาผู้ดูแลระบบ (SaaS Feedbacks)
+model SystemFeedback {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  subject   String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+// โมเดลสำหรับการดูแลรักษาและแจ้งซ่อมห้องพัก (Cleaning & Repairs)
+model RoomMaintenance {
+  id          String            @id @default(cuid())
+  hotelId     String
+  hotel       Hotel             @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  title       String            // หัวข้อแจ้งซ่อม/ทำความสะอาด เช่น แอร์ไม่เย็น, ทำความสะอาดใหญ่
+  description String?           // รายละเอียด
+  type        MaintenanceType   // CLEANING หรือ REPAIR
+  status      MaintenanceStatus @default(PENDING) // PENDING, IN_PROGRESS, RESOLVED
+  cost        Float             @default(0)       // ค่าใช้จ่าย (ถ้ามี)
+  reportedBy  String?           // ผู้รายงาน/แจ้งเรื่อง
+  resolvedAt  DateTime?         // วันที่ซ่อม/ทำความสะอาดเสร็จ
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+enum MaintenanceType {
+  CLEANING
+  REPAIR
+}
+
+enum MaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+}
