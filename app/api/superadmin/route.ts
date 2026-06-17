@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ทำรายการแบบ Transaction
-    const hotel = await prisma.$transaction(async (tx) => {
+    const hotel = await prisma.$transaction(async (tx: any) => {
       const h = await tx.hotel.create({
         data: {
           name,
