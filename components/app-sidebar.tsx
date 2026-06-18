@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserButton } from "@clerk/nextjs";
+import api from "@/lib/axios";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -31,6 +32,8 @@ import {
   FileSpreadsheet,
   MessageSquare,
   Wrench,
+  ShieldCheck,
+  DoorOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -67,6 +70,12 @@ const navItems = [
         label: "ห้องพัก",
         icon: BedDouble,
         description: "เพิ่ม/แก้ไขห้องพัก",
+      },
+      {
+        href: "/room-types",
+        label: "หมวดหมู่ห้องพัก",
+        icon: DoorOpen,
+        description: "จัดการประเภทห้องพัก",
       },
       {
         href: "/maintenance",
@@ -114,9 +123,10 @@ const navItems = [
 
 interface AppSidebarProps {
   children: React.ReactNode;
+  isImpersonating?: boolean;
 }
 
-export function AppSidebar({ children }: AppSidebarProps) {
+export function AppSidebar({ children, isImpersonating }: AppSidebarProps) {
   const pathname = usePathname();
 
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -132,12 +142,8 @@ export function AppSidebar({ children }: AppSidebarProps) {
     }
     setSubmittingFeedback(true);
     try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: feedbackSubject, message: feedbackMessage }),
-      });
-      const data = await res.json();
+      const res = await api.post("/api/feedback", { subject: feedbackSubject, message: feedbackMessage });
+      const data = res.data;
       if (data.success) {
         toast.success("ส่งข้อคิดเห็น/ข้อเสนอแนะถึงผู้ดูแลระบบแล้ว ขอบคุณครับ!");
         setFeedbackSubject("");
@@ -151,6 +157,15 @@ export function AppSidebar({ children }: AppSidebarProps) {
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย");
     } finally {
       setSubmittingFeedback(false);
+    }
+  };
+
+  const handleExitImpersonate = async () => {
+    try {
+      await api.post("/api/impersonate", { action: "exit" });
+      window.location.href = "/superadmin";
+    } catch (err) {
+      toast.error("เกิดข้อผิดพลาดในการออกจากระบบจำลอง");
     }
   };
 
@@ -261,6 +276,17 @@ export function AppSidebar({ children }: AppSidebarProps) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen bg-background">
+        {isImpersonating && (
+          <div className="w-full bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-sm z-50">
+            <span className="font-medium flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              คุณกำลังใช้งานในฐานะ "เจ้าของโรงแรม" (SuperAdmin Impersonation Mode)
+            </span>
+            <Button size="sm" variant="secondary" onClick={handleExitImpersonate} className="h-7 text-xs rounded-full">
+              กลับสู่ระบบ SuperAdmin
+            </Button>
+          </div>
+        )}
         {/* Top Bar */}
         <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background/80 backdrop-blur px-4">
           <SidebarTrigger className="h-8 w-8" />

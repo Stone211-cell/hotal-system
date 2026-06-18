@@ -9,6 +9,7 @@ import api from "@/lib/axios";
 export type Period = "day" | "month" | "year";
 
 export interface DashboardData {
+  isSuperAdmin?: boolean;
   member?: {
     role: "OWNER" | "STAFF";
     permissions: {

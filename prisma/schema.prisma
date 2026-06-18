@@ -21,6 +21,7 @@ model Hotel {
   nextBillingDate    DateTime?
   overdueMonths      Int                @default(0)
   rentAmount         Float              @default(0) // ค่าเช่าระบบต่อเดือน
+  isPaidThisMonth    Boolean            @default(false) // เดือนนี้จ่ายค่าเช่าแล้วหรือยัง
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
@@ -39,6 +40,7 @@ enum SubscriptionStatus {
   ACTIVE
   OVERDUE
   SUSPENDED
+  TERMINATED
 }
 
 // โมเดลสำหรับพนักงานและเจ้าของโรงแรม (Users/Members)

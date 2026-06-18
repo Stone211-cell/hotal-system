@@ -22,6 +22,7 @@ import {
   User
 } from "lucide-react";
 import { toast } from "sonner";
+import api from "@/lib/axios";
 
 interface Member {
   id: string;
@@ -61,11 +62,11 @@ export default function SettingsPage() {
   const fetchSettingsData = async () => {
     try {
       // 1. Get current member context
-      const contextRes = await fetch("/api/dashboard"); // We can get it or call a dashboard endpoint to check session
+      const contextRes = await api.get("/api/dashboard"); // We can get it or call a dashboard endpoint to check session
       // Wait, dashboard endpoint contains session context, but it doesn't give member directly, let's fetch members list and check error or see who we are.
       // Alternatively, we can check a simple endpoint or list members
-      const membersRes = await fetch("/api/members");
-      const membersJson = await membersRes.json();
+      const membersRes = await api.get("/api/members");
+      const membersJson = membersRes.data;
 
       if (membersJson.success) {
         setMembers(membersJson.data);
@@ -75,8 +76,8 @@ export default function SettingsPage() {
       }
 
       // Fetch hotel info (we can get it from dashboard payload or a custom call)
-      const dashRes = await fetch("/api/dashboard");
-      const dashJson = await dashRes.json();
+      const dashRes = await api.get("/api/dashboard");
+      const dashJson = dashRes.data;
       if (dashJson.success) {
         // Since we refactored api/dashboard to return hotel info (we didn't add it in payload, but we can display general details)
         // Let's create a temporary mock or fallback for hotel info
@@ -108,20 +109,16 @@ export default function SettingsPage() {
     }
 
     try {
-      const res = await fetch("/api/members", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: inviteEmail.trim(),
-          name: inviteName.trim(),
-          role: "STAFF",
-          canManageRooms,
-          canManageBookings,
-          canViewFinance,
-        }),
+      const res = await api.post("/api/members", {
+        email: inviteEmail.trim(),
+        name: inviteName.trim(),
+        role: "STAFF",
+        canManageRooms,
+        canManageBookings,
+        canViewFinance,
       });
 
-      const json = await res.json();
+      const json = res.data;
       if (json.success) {
         toast.success(`เพิ่มพนักงาน ${inviteEmail} เข้าสู่ระบบสำเร็จแล้ว!`);
         setInviteEmail("");
@@ -145,13 +142,9 @@ export default function SettingsPage() {
     value: boolean
   ) => {
     try {
-      const res = await fetch(`/api/members/${memberId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value }),
-      });
+      const res = await api.put(`/api/members/${memberId}`, { [field]: value });
 
-      const json = await res.json();
+      const json = res.data;
       if (json.success) {
         toast.success("อัปเดตสิทธิ์การเข้าถึงพนักงานเสร็จสิ้น!");
         // Update local state
@@ -171,11 +164,9 @@ export default function SettingsPage() {
     if (!confirm(`คุณแน่ใจว่าต้องการลบพนักงาน ${email} ออกจากระบบ ใช่หรือไม่?`)) return;
 
     try {
-      const res = await fetch(`/api/members/${id}`, {
-        method: "DELETE",
-      });
+      const res = await api.delete(`/api/members/${id}`);
 
-      const json = await res.json();
+      const json = res.data;
       if (json.success) {
         toast.success("ลบพนักงานออกจากระบบโรงแรมสำเร็จแล้ว");
         fetchSettingsData();

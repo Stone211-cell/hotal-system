@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getRooms, getRoomTypes, createRoom, createRoomType, updateRoom, deleteRoom, Room, RoomType, CreateRoomInput, RoomStatus, updateRoomStatus } from "@/services/roomService";
 import { checkInBooking, checkOutBooking, createBooking } from "@/services/bookingService";
 import { createMaintenance } from "@/services/maintenanceService";
+import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -665,8 +666,8 @@ export default function RoomsPage() {
       setRoomTypes(rt);
 
       // โหลดสิทธิ์ของสมาชิกพนักงานเพื่อนำไปซ่อนปุ่ม
-      const dashRes = await fetch("/api/dashboard");
-      const dashJson = await dashRes.json();
+      const dashRes = await api.get("/api/dashboard");
+      const dashJson = dashRes.data;
       if (dashJson.success && dashJson.data.member) {
         setCanManageRooms(dashJson.data.member.permissions.canManageRooms);
       }

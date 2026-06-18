@@ -1,4 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 export interface MemberPermissions {
@@ -38,6 +39,34 @@ export async function getCurrentMember(): Promise<CurrentMemberContext | null> {
       user.privateMetadata?.IsAdmin === true;
 
     if (isSuperAdmin) {
+      const cookieStore = await cookies();
+      const impersonatedHotelId = cookieStore.get("impersonatedHotelId")?.value;
+
+      if (impersonatedHotelId) {
+        // ดึงชื่อโรงแรมเพื่อใช้ใน UI
+        const hotel = await prisma.hotel.findUnique({
+          where: { id: impersonatedHotelId },
+          select: { name: true },
+        });
+
+        if (hotel) {
+          return {
+            userId,
+            email,
+            isSuperAdmin: true,
+            isActive: true,
+            hotelId: impersonatedHotelId,
+            hotelName: hotel.name,
+            role: "OWNER",
+            permissions: {
+              canManageRooms: true,
+              canManageBookings: true,
+              canViewFinance: true,
+            },
+          };
+        }
+      }
+
       return {
         userId,
         email,

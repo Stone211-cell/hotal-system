@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { getBills, createBill, payBill, deleteBill, Bill, BillStatus, PaymentMethod } from "@/services/dormService";
 import { getContracts, Contract } from "@/services/dormService";
+import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -251,8 +252,8 @@ export default function BillsPage() {
       const [b, c] = await Promise.all([getBills(), getContracts()]);
       setBills(b); setContracts(c);
       
-      const dashRes = await fetch("/api/dashboard");
-      const dashJson = await dashRes.json();
+      const dashRes = await api.get("/api/dashboard");
+      const dashJson = dashRes.data;
       if (dashJson.success && dashJson.data.hotelName) {
         setHotelName(dashJson.data.hotelName);
       }

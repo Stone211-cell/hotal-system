@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       rentAmount,
       subscriptionStatus,
       overdueMonths,
+      logoUrl,
     } = body;
 
     if (!name || !ownerEmail) {
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           description: description || null,
+          logoUrl: logoUrl || null,
           rentAmount: Number(rentAmount) || 0,
           subscriptionStatus: subscriptionStatus || "TRIAL",
           overdueMonths: overdueMonths ? Number(overdueMonths) : 0,

@@ -16,6 +16,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (member.isSuperAdmin && !member.hotelId) {
+      return NextResponse.json({
+        data: {
+          isSuperAdmin: true,
+          hotelName: "SuperAdmin Dashboard",
+          rooms: { total: 0, available: 0, occupied: 0, maintenance: 0, occupancyRate: 0 },
+          finance: { totalIncome: 0, totalExpense: 0, netProfit: 0, period: { from: new Date(), to: new Date() } },
+          bookings: { total: 0, recent: [], checkedInToday: 0, checkingOutToday: 0 },
+        },
+        success: true,
+      });
+    }
+
     const hotelId = member.hotelId;
     if (!hotelId) {
       return NextResponse.json(

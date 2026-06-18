@@ -6,6 +6,7 @@ import {
   cancelBooking, createPayment, Booking, BookingStatus, PaymentMethod,
 } from "@/services/bookingService";
 import { getRooms, Room } from "@/services/roomService";
+import api from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -264,8 +265,8 @@ export default function BookingsPage() {
       const [b, r] = await Promise.all([getBookings(), getRooms()]);
       setBookings(b); setRooms(r);
       
-      const dashRes = await fetch("/api/dashboard");
-      const dashJson = await dashRes.json();
+      const dashRes = await api.get("/api/dashboard");
+      const dashJson = dashRes.data;
       if (dashJson.success && dashJson.data.hotelName) {
         setHotelName(dashJson.data.hotelName);
       }

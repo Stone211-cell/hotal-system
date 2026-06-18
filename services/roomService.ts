@@ -88,6 +88,17 @@ export async function createRoomType(input: CreateRoomTypeInput): Promise<RoomTy
   return data.data;
 }
 
+/** แก้ไขประเภทห้อง */
+export async function updateRoomType(id: string, input: Partial<CreateRoomTypeInput>): Promise<RoomType> {
+  const { data } = await api.put<{ data: RoomType }>(`/api/room-types/${id}`, input);
+  return data.data;
+}
+
+/** ลบประเภทห้อง */
+export async function deleteRoomType(id: string): Promise<void> {
+  await api.delete(`/api/room-types/${id}`);
+}
+
 // ─── Rooms ──────────────────────────────────
 
 /** ดึงรายการห้องทั้งหมด (กรองได้) */

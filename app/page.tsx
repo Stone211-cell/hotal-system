@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getDashboard, DashboardData, Period } from "@/services/dashboardService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,12 +40,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>("month");
+  const router = useRouter();
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     getDashboard(period)
-      .then(setData)
+      .then((res) => {
+        if (res.isSuperAdmin) {
+          router.push("/superadmin");
+          return;
+        }
+        setData(res);
+      })
       .catch((err) => {
         console.error(err);
         setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด");
@@ -89,7 +97,7 @@ export default function DashboardPage() {
             </h3>
             <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-2 leading-relaxed">
               <li>เปิดเบราว์เซอร์ไปที่หน้าต่าง <strong>Supabase Dashboard</strong> (supabase.com/dashboard)</li>
-              <li>คลิกเลือกโปรเจกต์ <strong>&quot;runhkdqkfrxxwsvidata&quot;</strong> ของคุณ</li>
+              <li>คลิกเลือกโปรเจกต์ของคุณ</li>
               <li>กดปุ่ม <strong>&quot;Restore Project&quot;</strong> (กู้คืนโครงการ) เพื่อเปิดใช้งานระบบ</li>
               <li>รอให้ระบบสร้างเซิร์ฟเวอร์เสร็จ (1-2 นาที) แล้วลองกดปุ่มด้านล่างเพื่อเริ่มใหม่</li>
             </ol>

@@ -19,7 +19,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const { id } = await params;
     const body = await request.json();
-    const { name, description, subscriptionStatus, rentAmount, overdueMonths, nextBillingDate } = body;
+    const { name, description, logoUrl, subscriptionStatus, rentAmount, overdueMonths, nextBillingDate } = body;
 
     const existingHotel = await prisma.hotel.findUnique({
       where: { id }
@@ -37,6 +37,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       data: {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
+        ...(logoUrl !== undefined && { logoUrl }),
         ...(subscriptionStatus !== undefined && { subscriptionStatus }),
         ...(rentAmount !== undefined && { rentAmount: Number(rentAmount) }),
         ...(overdueMonths !== undefined && { overdueMonths: Number(overdueMonths) }),
