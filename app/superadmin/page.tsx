@@ -164,7 +164,7 @@ export default function SuperAdminPage() {
       const res = await api.post("/api/impersonate", { hotelId, action: "enter" });
       if (res.data.success) {
         toast.success("กำลังเข้าสู่ระบบในฐานะเจ้าของโรงแรม...");
-        router.push("/");
+        window.location.href = "/";
       } else {
         toast.error(res.data.message || "ไม่สามารถเข้าจัดการโรงแรมได้");
       }
@@ -648,7 +648,7 @@ export default function SuperAdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="rent-amount">ยอดเรียกเก็บ / เดือน (บาท)</Label>
-                  <Input id="rent-amount" type="number" value={newRentAmount} onChange={(e) => setNewRentAmount(e.target.value)} required className="rounded-xl h-10 border-violet-200 focus-visible:ring-violet-500" />
+                  <Input id="rent-amount" type="number" step="any" value={newRentAmount} onChange={(e) => setNewRentAmount(e.target.value)} required className="rounded-xl h-10 border-violet-200 focus-visible:ring-violet-500" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="sub-status">สถานะเริ่มต้น</Label>
@@ -708,7 +708,7 @@ export default function SuperAdminPage() {
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-rent">ยอดเรียกเก็บ / เดือน (บาท)</Label>
-                  <Input id="edit-rent" type="number" value={editRentAmount} onChange={(e) => setEditRentAmount(e.target.value)} required className="rounded-xl h-10 font-bold text-foreground" />
+                  <Input id="edit-rent" type="number" step="any" value={editRentAmount} onChange={(e) => setEditRentAmount(e.target.value)} required className="rounded-xl h-10 font-bold text-foreground" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-sub">สถานะบัญชี (ปิดระบบ/ยกเลิก)</Label>

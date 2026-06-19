@@ -20,6 +20,7 @@ export interface Contract {
   tenant: Guest;
   startDate: string;
   endDate: string;
+  paymentDueDay: number;
   depositAmount: number;
   rentAmount: number;
   status: ContractStatus;
@@ -64,6 +65,7 @@ export interface CreateContractInput {
   };
   startDate: string;
   endDate: string;
+  paymentDueDay: number;
   depositAmount: number;
   rentAmount: number;
   notes?: string;
@@ -96,6 +98,11 @@ export async function getContracts(filters?: { status?: ContractStatus; roomId?:
 
 export async function createContract(input: CreateContractInput): Promise<Contract> {
   const { data } = await api.post<{ data: Contract }>("/api/contracts", input);
+  return data.data;
+}
+
+export async function updateContract(id: string, input: CreateContractInput & { saveHistory?: boolean }): Promise<Contract> {
+  const { data } = await api.put<{ data: Contract }>(`/api/contracts/${id}`, input);
   return data.data;
 }
 

@@ -42,9 +42,11 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("month");
   const router = useRouter();
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
+  const fetchData = (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+      setError(null);
+    }
     getDashboard(period)
       .then((res) => {
         if (res.isSuperAdmin) {
@@ -54,10 +56,25 @@ export default function DashboardPage() {
         setData(res);
       })
       .catch((err) => {
-        console.error(err);
-        setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด");
+        if (showLoading) {
+          console.error(err);
+          setError(err.message || "เกิดข้อผิดพลาดในการดึงข้อมูลแดชบอร์ด");
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchData(true);
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchData(false);
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [period]);
 
   if (loading) return (

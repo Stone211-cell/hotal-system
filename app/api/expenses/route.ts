@@ -35,9 +35,11 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const category = searchParams.get("category");
+    const type = searchParams.get("type");
 
     const where: Record<string, unknown> = { hotelId };
     if (category) where.category = category;
+    if (type) where.type = type;
     if (from || to) {
       where.date = {
         ...(from && { gte: new Date(from) }),
@@ -93,11 +95,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bookingId, category, description, amount, date } = body;
+    const { bookingId, category, description, amount, date, type } = body;
 
     if (!category || !description || !amount) {
       return NextResponse.json(
-        { message: "กรุณากรอกข้อมูลรายจ่ายให้ครบ", success: false },
+        { message: "กรุณากรอกข้อมูลให้ครบ", success: false },
         { status: 400 }
       );
     }
@@ -119,6 +121,7 @@ export async function POST(request: NextRequest) {
       data: {
         hotelId,
         bookingId: bookingId || null,
+        type: type || "EXPENSE",
         category,
         description,
         amount: Number(amount),

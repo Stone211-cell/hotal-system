@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ data: bookings, success: true });
+    return NextResponse.json({ data: bookings, permissions: member.permissions, hotelName: member.hotelName, success: true });
   } catch (error) {
     console.error("[GET /api/bookings]", error);
     return NextResponse.json(

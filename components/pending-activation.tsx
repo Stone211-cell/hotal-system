@@ -47,12 +47,20 @@ export function PendingActivation({ email, firstName = "", lastName = "" }: Pend
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hotelName) {
-      toast.error("กรุณาระบุชื่อโรงแรมของท่าน");
+    if (!name) {
+      toast.error("กรุณาระบุชื่อ-นามสกุล");
       return;
     }
     if (!phone) {
       toast.error("กรุณาระบุเบอร์โทรติดต่อ");
+      return;
+    }
+    if (!contactEmail) {
+      toast.error("กรุณาระบุอีเมลติดต่อกลับ");
+      return;
+    }
+    if (!hotelName) {
+      toast.error("กรุณาระบุชื่อโรงแรมของท่าน");
       return;
     }
 
@@ -179,7 +187,7 @@ export function PendingActivation({ email, firstName = "", lastName = "" }: Pend
                       <span>กรุณากรอกข้อมูลให้ครบถ้วน ทีมงานจะติดต่อกลับเพื่อเปิดสิทธิ์ใช้งานให้ท่านโดยเร็วที่สุด</span>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="w-full space-y-4">
+                    <form onSubmit={handleSubmit} className="w-full space-y-4" noValidate>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                           <Label htmlFor="name" className="text-xs">ชื่อ-นามสกุล *</Label>
@@ -188,7 +196,6 @@ export function PendingActivation({ email, firstName = "", lastName = "" }: Pend
                             placeholder="เช่น สมชาย ใจดี"
                             value={name}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-                            required
                             className="h-10 rounded-xl"
                           />
                         </div>
@@ -200,7 +207,6 @@ export function PendingActivation({ email, firstName = "", lastName = "" }: Pend
                             placeholder="089-xxxxxxx"
                             value={phone}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
-                            required
                             className="h-10 rounded-xl"
                           />
                         </div>
@@ -213,7 +219,6 @@ export function PendingActivation({ email, firstName = "", lastName = "" }: Pend
                           type="email"
                           value={contactEmail}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setContactEmail(e.target.value)}
-                          required
                           className="h-10 rounded-xl"
                         />
                         <p className="text-xs text-muted-foreground">ดึงมาจากบัญชีที่ล็อกอิน แก้ไขได้</p>
@@ -226,7 +231,6 @@ export function PendingActivation({ email, firstName = "", lastName = "" }: Pend
                           placeholder="เช่น โรงแรมสวีทพลาซ่า"
                           value={hotelName}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHotelName(e.target.value)}
-                          required
                           className="h-10 rounded-xl"
                         />
                       </div>

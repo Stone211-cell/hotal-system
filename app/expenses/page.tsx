@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { th } from "date-fns/locale";
 
 const EXPENSE_CATEGORIES = ["ค่าซ่อมบำรุง", "ค่าแม่บ้าน", "ค่าน้ำ/ไฟ", "ค่าอาหาร", "ค่าสาธารณูปโภค", "ค่าวัสดุ", "อื่นๆ"];
+const INCOME_CATEGORIES = ["ค่าปรับ", "ค่าเช่าอุปกรณ์", "ค่าบริการเพิ่มเติม", "อื่นๆ"];
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB", maximumFractionDigits: 0 }).format(n);
@@ -34,7 +36,7 @@ export default function ExpensesPage() {
   const [tab, setTab] = useState<"income" | "expense">("income");
   const [period, setPeriod] = useState(0); // 0 = this month, 1 = last month, etc.
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ category: "", description: "", amount: "", date: format(new Date(), "yyyy-MM-dd") });
+  const [form, setForm] = useState({ type: "EXPENSE", category: "", customCategory: "", description: "", amount: "", date: format(new Date(), "yyyy-MM-dd") });
   const [saving, setSaving] = useState(false);
 
   const getDateRange = (p: number) => {
@@ -64,10 +66,15 @@ export default function ExpensesPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      await createExpense({ category: form.category, description: form.description, amount: Number(form.amount), date: form.date });
-      toast.success("บันทึกรายจ่ายสำเร็จ");
+      const finalCategory = form.category === "อื่นๆ" ? form.customCategory : form.category;
+      if (!finalCategory) {
+        toast.error("กรุณาระบุประเภท");
+        return;
+      }
+      await createExpense({ type: form.type, category: finalCategory, description: form.description, amount: Number(form.amount), date: form.date });
+      toast.success("บันทึกข้อมูลสำเร็จ");
       setShowForm(false);
-      setForm({ category: "", description: "", amount: "", date: format(new Date(), "yyyy-MM-dd") });
+      setForm({ type: "EXPENSE", category: "", customCategory: "", description: "", amount: "", date: format(new Date(), "yyyy-MM-dd") });
       fetchAll();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
@@ -79,8 +86,12 @@ export default function ExpensesPage() {
     return d >= from && d <= to;
   });
 
-  const totalIncome = filteredPayments.reduce((s, p) => s + p.amount, 0);
-  const totalExpense = expenses.reduce((s, e) => s + e.amount, 0);
+  // Combine manual incomes into totalIncome
+  const manualIncomes = expenses.filter(e => e.type === "INCOME");
+  const actualExpenses = expenses.filter(e => e.type !== "INCOME");
+
+  const totalIncome = filteredPayments.reduce((s, p) => s + p.amount, 0) + manualIncomes.reduce((s, e) => s + e.amount, 0);
+  const totalExpense = actualExpenses.reduce((s, e) => s + e.amount, 0);
   const netProfit = totalIncome - totalExpense;
 
   return (
@@ -104,7 +115,7 @@ export default function ExpensesPage() {
             </SelectContent>
           </Select>
           <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-1.5" />เพิ่มรายจ่าย
+            <Plus className="h-4 w-4 mr-1.5" />บันทึกรายการ (อื่นๆ)
           </Button>
         </div>
       </div>
@@ -128,7 +139,7 @@ export default function ExpensesPage() {
             <div>
               <p className="text-sm text-muted-foreground">รายจ่ายรวม</p>
               <p className="text-2xl font-bold text-red-600 mt-1">{formatCurrency(totalExpense)}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{expenses.length} รายการ</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{actualExpenses.length} รายการ</p>
             </div>
             <div className="h-11 w-11 rounded-xl bg-red-500/15 flex items-center justify-center">
               <TrendingDown className="h-5 w-5 text-red-600" />
@@ -152,8 +163,8 @@ export default function ExpensesPage() {
       {/* Tabs: Income | Expense */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as "income" | "expense")}>
         <TabsList>
-          <TabsTrigger value="income">รายรับ ({filteredPayments.length})</TabsTrigger>
-          <TabsTrigger value="expense">รายจ่าย ({expenses.length})</TabsTrigger>
+          <TabsTrigger value="income">รายรับ ({filteredPayments.length + manualIncomes.length})</TabsTrigger>
+          <TabsTrigger value="expense">รายจ่าย ({actualExpenses.length})</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -183,6 +194,20 @@ export default function ExpensesPage() {
                     <span className="text-sm font-semibold text-green-600">+{formatCurrency(p.amount)}</span>
                   </div>
                 ))}
+                {manualIncomes.map((e) => (
+                  <div key={e.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted/30 transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{e.description}</p>
+                        <Badge variant="outline" className="text-xs h-5 border-green-200 text-green-700">{e.category}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {format(new Date(e.date), "d MMM yyyy", { locale: th })} · บันทึกด้วยตนเอง
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-green-600">+{formatCurrency(e.amount)}</span>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
@@ -193,11 +218,11 @@ export default function ExpensesPage() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><Receipt className="h-4 w-4 text-red-600" />รายจ่าย</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {expenses.length === 0 ? (
+            {actualExpenses.length === 0 ? (
               <div className="py-12 text-center text-sm text-muted-foreground">ไม่มีรายจ่ายในช่วงนี้</div>
             ) : (
               <div className="divide-y">
-                {expenses.map((e) => (
+                {actualExpenses.map((e) => (
                   <div key={e.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted/30 transition-colors">
                     <div>
                       <div className="flex items-center gap-2">
@@ -218,17 +243,33 @@ export default function ExpensesPage() {
       {/* Add Expense Dialog */}
       <Dialog open={showForm} onOpenChange={(o) => !o && setShowForm(false)}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader><DialogTitle>เพิ่มรายจ่าย</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>บันทึกรายการอื่นๆ</DialogTitle></DialogHeader>
           <form onSubmit={handleSave} className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>ประเภทรายจ่าย *</Label>
-              <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))} required>
-                <SelectTrigger><SelectValue placeholder="เลือกประเภท" /></SelectTrigger>
+              <Label>ประเภทธุรกรรม *</Label>
+              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v, category: "", customCategory: "" }))} required>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {EXPENSE_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="EXPENSE">รายจ่าย</SelectItem>
+                  <SelectItem value="INCOME">รายรับอื่นๆ</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>หมวดหมู่ *</Label>
+              <Select value={form.category} onValueChange={(v) => setForm((f) => ({ ...f, category: v }))} required>
+                <SelectTrigger><SelectValue placeholder="เลือกหมวดหมู่" /></SelectTrigger>
+                <SelectContent>
+                  {(form.type === "EXPENSE" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.category === "อื่นๆ" && (
+              <div className="space-y-1.5">
+                <Label>ระบุหมวดหมู่เพิ่มเติม *</Label>
+                <Input placeholder="ระบุประเภทด้วยตนเอง..." value={form.customCategory} onChange={(e) => setForm((f) => ({ ...f, customCategory: e.target.value }))} required />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>รายละเอียด *</Label>
               <Input placeholder="รายละเอียดรายจ่าย..." value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} required />
@@ -236,11 +277,11 @@ export default function ExpensesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>จำนวนเงิน (บาท) *</Label>
-                <Input type="number" min={1} placeholder="500" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} required />
+                <Input type="number" min={1} step="any" placeholder="500" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} required />
               </div>
               <div className="space-y-1.5">
-                <Label>วันที่</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
+                <Label>วันที่ทำรายการ *</Label>
+                <DatePicker value={form.date} onChange={(v) => v && setForm((f) => ({ ...f, date: v }))} />
               </div>
             </div>
             <DialogFooter>

@@ -150,7 +150,7 @@ export function TrendLineChart({
 
   // คำนวณพิกัด X, Y สำหรับแต่ละจุดข้อมูล
   const points = dataPoints.map((val, idx) => {
-    const x = padding + (idx / (dataPoints.length - 1)) * chartWidth;
+    const x = padding + (idx / Math.max(1, dataPoints.length - 1)) * chartWidth;
     const y = padding + chartHeight - (val / maxVal) * chartHeight;
     return { x, y, val };
   });

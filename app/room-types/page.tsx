@@ -204,6 +204,7 @@ export default function RoomTypesPage() {
               <Input 
                 id="type-price" 
                 type="number" 
+                step="any"
                 value={basePrice} 
                 onChange={(e) => setBasePrice(e.target.value)} 
                 required 

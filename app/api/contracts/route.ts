@@ -150,6 +150,7 @@ export async function POST(request: NextRequest) {
         tenantId: tenantRecord.id,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
+        paymentDueDay: Number(body.paymentDueDay) || 5,
         depositAmount: Number(depositAmount) || 0,
         rentAmount: Number(rentAmount),
         notes: notes || null,

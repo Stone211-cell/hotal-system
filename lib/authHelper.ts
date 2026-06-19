@@ -81,8 +81,9 @@ export async function getCurrentMember(): Promise<CurrentMemberContext | null> {
     }
 
     // ตรวจสอบสมาชิกจากฐานข้อมูล เพื่อดูว่าสังกัดโรงแรมไหนและมียศใด
+    const normalizedEmail = email.toLowerCase().trim();
     const member = await prisma.hotelMember.findFirst({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
       include: { hotel: true },
     });
 
@@ -103,10 +104,14 @@ export async function getCurrentMember(): Promise<CurrentMemberContext | null> {
 
     // อัปเดต Clerk User ID ในฐานข้อมูลหากยังไม่ได้บันทึก
     if (!member.userId) {
-      await prisma.hotelMember.update({
-        where: { id: member.id },
-        data: { userId },
-      });
+      try {
+        await prisma.hotelMember.update({
+          where: { id: member.id },
+          data: { userId },
+        });
+      } catch (updateErr) {
+        console.error("[getCurrentMember] Failed to update userId:", updateErr);
+      }
     }
 
     const isOwner = member.role === "OWNER";

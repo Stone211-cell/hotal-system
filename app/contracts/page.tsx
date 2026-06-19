@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, FileText, User, Home, AlertCircle, XCircle } from "lucide-react";
+import { Plus, Search, FileText, User, Home, AlertCircle, XCircle, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -28,35 +28,61 @@ const statusConfig: Record<ContractStatus, { label: string; color: string }> = {
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("th-TH", { style: "currency", currency: "THB", maximumFractionDigits: 0 }).format(n);
 
-function ContractDialog({ open, onClose, onSave, rooms }: { open: boolean; onClose: () => void; onSave: () => void; rooms: Room[]; }) {
+import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
+import { updateContract } from "@/services/dormService";
+
+function ContractDialog({ open, onClose, onSave, rooms, editData, contracts }: { open: boolean; onClose: () => void; onSave: () => void; rooms: Room[]; editData?: Contract | null; contracts: Contract[] }) {
   const [form, setForm] = useState({
-    roomId: "", startDate: "", endDate: "",
+    roomId: "", startDate: "", endDate: "", paymentDueDay: "5",
     firstName: "", lastName: "", phone: "", idNumber: "", address: "",
     depositAmount: "", rentAmount: "", notes: "",
   });
   const [loading, setLoading] = useState(false);
+  const [saveHistory, setSaveHistory] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setForm({ roomId: "", startDate: "", endDate: "", firstName: "", lastName: "", phone: "", idNumber: "", address: "", depositAmount: "", rentAmount: "", notes: "" });
+    if (open && editData) {
+      setForm({
+        roomId: editData.roomId,
+        startDate: format(new Date(editData.startDate), "yyyy-MM-dd"),
+        endDate: format(new Date(editData.endDate), "yyyy-MM-dd"),
+        paymentDueDay: String(editData.paymentDueDay),
+        firstName: editData.tenant.firstName,
+        lastName: editData.tenant.lastName,
+        phone: editData.tenant.phone,
+        idNumber: editData.tenant.idNumber || "",
+        address: editData.tenant.address || "",
+        depositAmount: String(editData.depositAmount),
+        rentAmount: String(editData.rentAmount),
+        notes: editData.notes || "",
+      });
+      setSaveHistory(true); // Default to save history when editing
+    } else if (!open) {
+      setForm({ roomId: "", startDate: "", endDate: "", paymentDueDay: "5", firstName: "", lastName: "", phone: "", idNumber: "", address: "", depositAmount: "", rentAmount: "", notes: "" });
+      setSaveHistory(false);
     }
-  }, [open]);
+  }, [open, editData]);
 
-  const availableRooms = rooms.filter((r) => r.status === "AVAILABLE" || r.status === "MAINTENANCE");
+  // If editing, the room is already assigned, so we just use all rooms (or include the current room)
+  const activeContractRoomIds = contracts.filter(c => c.status === "ACTIVE").map(c => c.roomId);
+  const availableRooms = editData 
+    ? rooms 
+    : rooms.filter((r) => (r.status === "AVAILABLE" || r.status === "MAINTENANCE") && !activeContractRoomIds.includes(r.id));
   const selectedRoom = availableRooms.find(r => r.id === form.roomId);
 
   useEffect(() => {
-    if (selectedRoom && !form.rentAmount) {
-      // Auto-fill base price if empty
-      setForm(f => ({ ...f, rentAmount: String(selectedRoom.pricePerNight * 30) })); // assume monthly roughly 30 * daily or basePrice
+    if (selectedRoom && !form.rentAmount && !editData) {
+      // Auto-fill base price if empty and not editing
+      setForm(f => ({ ...f, rentAmount: String(selectedRoom.pricePerNight * 30) }));
     }
-  }, [form.roomId, selectedRoom]);
+  }, [form.roomId, selectedRoom, editData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await createContract({
+      const payload = {
         roomId: form.roomId,
         tenant: {
           firstName: form.firstName, lastName: form.lastName, phone: form.phone,
@@ -64,11 +90,26 @@ function ContractDialog({ open, onClose, onSave, rooms }: { open: boolean; onClo
         },
         startDate: form.startDate,
         endDate: form.endDate,
+        paymentDueDay: Number(form.paymentDueDay) || 5,
         depositAmount: Number(form.depositAmount) || 0,
         rentAmount: Number(form.rentAmount),
         notes: form.notes || undefined,
-      });
-      toast.success("สร้างสัญญาเช่าสำเร็จ");
+      };
+
+      if (editData) {
+        if (saveHistory) {
+          // Create new contract, set old to EXPIRED
+          await updateContractStatus(editData.id, "EXPIRED", "Renewed/Updated to new revision");
+          await createContract(payload);
+        } else {
+          // Update in place
+          await updateContract(editData.id, payload);
+        }
+        toast.success("อัปเดตสัญญาเช่าสำเร็จ");
+      } else {
+        await createContract(payload);
+        toast.success("สร้างสัญญาเช่าสำเร็จ");
+      }
       onSave();
       onClose();
     } catch (err: unknown) {
@@ -81,15 +122,26 @@ function ContractDialog({ open, onClose, onSave, rooms }: { open: boolean; onClo
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>เพิ่มสัญญาเช่าใหม่</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editData ? "แก้ไขสัญญาเช่า" : "เพิ่มสัญญาเช่าใหม่"}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 py-2">
+          
+          {editData && (
+            <div className="flex items-center justify-between bg-primary/5 p-4 rounded-xl border border-primary/20">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-semibold text-primary">บันทึกเป็นประวัติสัญญาเก่า (เก็บไว้ดูย้อนหลัง)</Label>
+                <p className="text-xs text-muted-foreground">หากเปิด สัญญาเดิมจะหมดอายุและสร้างสัญญาใหม่แทน</p>
+              </div>
+              <Switch checked={saveHistory} onCheckedChange={setSaveHistory} />
+            </div>
+          )}
+
           {/* Room & Dates */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2"><Home className="h-4 w-4 text-primary" />ข้อมูลสัญญา</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>ห้องพัก *</Label>
-                <Select value={form.roomId} onValueChange={(v) => setForm((f) => ({ ...f, roomId: v }))} required>
+                <Select value={form.roomId} onValueChange={(v) => setForm((f) => ({ ...f, roomId: v }))} required disabled={!!editData}>
                   <SelectTrigger><SelectValue placeholder="เลือกห้องว่าง" /></SelectTrigger>
                   <SelectContent>
                     {availableRooms.map((r) => (
@@ -100,28 +152,32 @@ function ContractDialog({ open, onClose, onSave, rooms }: { open: boolean; onClo
               </div>
               <div className="space-y-1.5">
                 <Label>ค่าเช่ารายเดือน (บาท) *</Label>
-                <Input type="number" min={0} value={form.rentAmount} onChange={(e) => setForm((f) => ({ ...f, rentAmount: e.target.value }))} required />
+                <Input type="number" min={0} step="any" value={form.rentAmount} onChange={(e) => setForm((f) => ({ ...f, rentAmount: e.target.value }))} required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>วันเริ่มสัญญา *</Label>
-                <Input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} required />
+                <DatePicker value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} required />
               </div>
               <div className="space-y-1.5">
                 <Label>วันสิ้นสุดสัญญา *</Label>
-                <Input type="date" value={form.endDate} min={form.startDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} required />
+                <DatePicker value={form.endDate} min={form.startDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} required />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>ค่ามัดจำ/ประกัน (บาท)</Label>
-                <Input type="number" min={0} value={form.depositAmount} onChange={(e) => setForm((f) => ({ ...f, depositAmount: e.target.value }))} />
+                <Label>วันกำหนดชำระรายเดือน *</Label>
+                <Input type="number" min={1} max={31} value={form.paymentDueDay} onChange={(e) => setForm((f) => ({ ...f, paymentDueDay: e.target.value }))} required />
               </div>
               <div className="space-y-1.5">
-                <Label>หมายเหตุ</Label>
-                <Input placeholder="รายละเอียดเพิ่มเติม..." value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+                <Label>ค่ามัดจำ/ประกัน (บาท)</Label>
+                <Input type="number" min={0} step="any" value={form.depositAmount} onChange={(e) => setForm((f) => ({ ...f, depositAmount: e.target.value }))} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>หมายเหตุ</Label>
+              <Input placeholder="รายละเอียดเพิ่มเติม..." value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
             </div>
           </div>
           <Separator />
@@ -155,7 +211,7 @@ function ContractDialog({ open, onClose, onSave, rooms }: { open: boolean; onClo
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>ยกเลิก</Button>
-            <Button type="submit" disabled={loading || !form.roomId}>{loading ? "กำลังบันทึก..." : "เพิ่มสัญญา"}</Button>
+            <Button type="submit" disabled={loading || !form.roomId}>{loading ? "กำลังบันทึก..." : editData ? "บันทึกการแก้ไข" : "เพิ่มสัญญา"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -170,6 +226,7 @@ export default function ContractsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("ALL");
   const [showCreate, setShowCreate] = useState(false);
+  const [editContract, setEditContract] = useState<Contract | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -214,6 +271,18 @@ export default function ContractsPage() {
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-1.5" />ทำสัญญาใหม่
         </Button>
+      </div>
+
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm">
+        <h3 className="font-semibold text-primary mb-1 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" /> แนะนำการใช้งานระบบสัญญาเช่า
+        </h3>
+        <p className="text-muted-foreground leading-relaxed">
+          ระบบ <strong>สัญญาเช่า</strong> ออกแบบมาสำหรับผู้เข้าพักระยะยาว (หอพัก/อพาร์ทเม้นท์)<br />
+          เมื่อคุณเพิ่มสัญญาเช่าใหม่ ระบบจะจัดให้ห้องนั้นมีสถานะ <strong>กำลังเช่า (ACTIVE)</strong> ทันที<br />
+          และในวันที่กำหนดชำระรายเดือน ระบบจะสามารถนำข้อมูลนี้ไปสร้างบิลเรียกเก็บเงินได้อย่างถูกต้อง<br />
+          <span className="text-xs opacity-80 mt-1 block">* ห้องที่อยู่ระหว่างการจองหรือเช่าอยู่แล้ว จะไม่แสดงให้เลือกซ้ำ</span>
+        </p>
       </div>
 
       <div className="space-y-3">
@@ -287,9 +356,12 @@ export default function ContractsPage() {
                   </div>
 
                   {c.status === "ACTIVE" && (
-                    <div className="flex gap-2 pt-2 border-t mt-2">
+                    <div className="flex flex-wrap sm:flex-nowrap gap-2 pt-2 border-t mt-2">
+                      <Button size="sm" variant="outline" className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={() => setEditContract(c)} disabled={isLoading}>
+                        <Edit className="h-4 w-4 mr-1.5" />แก้ไข
+                      </Button>
                       <Button size="sm" variant="outline" className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleStatusChange(c, "TERMINATED")} disabled={isLoading}>
-                        <XCircle className="h-4 w-4 mr-1.5" />ยกเลิกสัญญา
+                        <XCircle className="h-4 w-4 mr-1.5" />ยกเลิก
                       </Button>
                       <Button size="sm" variant="outline" className="flex-1 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50" onClick={() => handleStatusChange(c, "EXPIRED")} disabled={isLoading}>
                         หมดสัญญา
@@ -303,7 +375,7 @@ export default function ContractsPage() {
         </div>
       )}
 
-      <ContractDialog open={showCreate} onClose={() => setShowCreate(false)} onSave={fetchAll} rooms={rooms} />
+      <ContractDialog open={showCreate || !!editContract} onClose={() => { setShowCreate(false); setEditContract(null); }} onSave={fetchAll} rooms={rooms} editData={editContract} contracts={contracts} />
     </div>
   );
 }

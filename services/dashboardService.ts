@@ -54,6 +54,7 @@ export interface RecentBooking {
 export interface Expense {
   id: string;
   bookingId?: string;
+  type: string;
   category: string;
   description: string;
   amount: number;
@@ -63,13 +64,14 @@ export interface Expense {
 
 export interface CreateExpenseInput {
   bookingId?: string;
+  type?: string;
   category: string;
   description: string;
   amount: number;
   date?: string;
 }
 
-/** ดึงข้อมูล Dashboard */
+/** ดึงรายจ่าย */
 export async function getDashboard(
   period: Period = "month",
   date?: string
@@ -87,11 +89,13 @@ export async function getExpenses(filters?: {
   from?: string;
   to?: string;
   category?: string;
+  type?: string;
 }): Promise<Expense[]> {
   const params = new URLSearchParams();
   if (filters?.from) params.append("from", filters.from);
   if (filters?.to) params.append("to", filters.to);
   if (filters?.category) params.append("category", filters.category);
+  if (filters?.type) params.append("type", filters.type);
 
   const { data } = await api.get<{ data: Expense[] }>(
     `/api/expenses${params.toString() ? `?${params.toString()}` : ""}`

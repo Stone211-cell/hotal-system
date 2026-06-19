@@ -18,9 +18,18 @@ const geistHeading = Geist({ subsets: ["latin"], variable: "--font-heading" });
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
+import type { Viewport } from "next";
+
 export const metadata = {
   title: "Hotel Management System SaaS",
   description: "ระบบจัดการโรงแรมแบบครบวงจรรองรับหลายผู้เช่า",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export const dynamic = "force-dynamic";

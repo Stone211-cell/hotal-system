@@ -40,6 +40,8 @@ import {
   DoorOpen,
   LogOut,
 } from "lucide-react";
+import { User, CreditCard } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -270,6 +272,7 @@ function RoomFormDialog({
                 id="pricePerNight"
                 type="number"
                 min={0}
+                step="any"
                 placeholder="1200"
                 value={form.pricePerNight || ""}
                 onChange={(e) =>
@@ -398,6 +401,7 @@ function RoomTypeDialog({
               id="rt-price"
               type="number"
               min={0}
+              step="any"
               placeholder="1000"
               value={form.basePrice}
               onChange={(e) => setForm((f) => ({ ...f, basePrice: e.target.value }))}
@@ -502,17 +506,17 @@ function QuickCheckInDialog({ open, onClose, onSave, room }: { open: boolean; on
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>วันเช็คอิน *</Label>
-              <Input type="date" value={form.checkInDate} onChange={e => setForm(f => ({ ...f, checkInDate: e.target.value }))} required />
+              <DatePicker value={form.checkInDate} onChange={v => setForm(f => ({ ...f, checkInDate: v }))} required />
             </div>
             <div className="space-y-1.5">
               <Label>วันเช็คเอาท์ *</Label>
-              <Input type="date" value={form.checkOutDate} min={form.checkInDate} onChange={e => setForm(f => ({ ...f, checkOutDate: e.target.value }))} required />
+              <DatePicker value={form.checkOutDate} min={form.checkInDate} onChange={v => setForm(f => ({ ...f, checkOutDate: v }))} required />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>ส่วนลด (บาท)</Label>
-              <Input type="number" min={0} value={form.discountAmount} onChange={e => setForm(f => ({ ...f, discountAmount: e.target.value }))} />
+              <Input type="number" min={0} step="any" value={form.discountAmount} onChange={e => setForm(f => ({ ...f, discountAmount: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
               <Label>หมายเหตุ</Label>
@@ -661,15 +665,12 @@ export default function RoomsPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [r, rt] = await Promise.all([getRooms(), getRoomTypes()]);
-      setRooms(r);
+      const [rRes, rt] = await Promise.all([api.get("/api/rooms"), getRoomTypes()]);
+      setRooms(rRes.data.data);
       setRoomTypes(rt);
 
-      // โหลดสิทธิ์ของสมาชิกพนักงานเพื่อนำไปซ่อนปุ่ม
-      const dashRes = await api.get("/api/dashboard");
-      const dashJson = dashRes.data;
-      if (dashJson.success && dashJson.data.member) {
-        setCanManageRooms(dashJson.data.member.permissions.canManageRooms);
+      if (rRes.data.permissions) {
+        setCanManageRooms(rRes.data.permissions.canManageRooms);
       }
     } catch (err) {
       toast.error("ไม่สามารถโหลดข้อมูลได้");

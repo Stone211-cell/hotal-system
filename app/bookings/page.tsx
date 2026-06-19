@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, CalendarCheck, DoorOpen, LogOut, XCircle, CreditCard, AlertCircle, User, BedDouble, Clock, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format, differenceInDays } from "date-fns";
 import { th } from "date-fns/locale";
 import { BookingReceiptModal } from "@/components/print-receipt";
@@ -84,7 +85,10 @@ function CreateBookingDialog({ open, onClose, onSave, rooms }: {
     } finally { setLoading(false); }
   };
 
-  const availableRooms = rooms.filter((r) => r.status === "AVAILABLE" || r.status === "RESERVED");
+  const availableRooms = rooms.filter((r) => 
+    (r.status === "AVAILABLE" || r.status === "RESERVED") && 
+    (!r.contracts || r.contracts.length === 0)
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -109,12 +113,12 @@ function CreateBookingDialog({ open, onClose, onSave, rooms }: {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="bk-checkin">วันเข้าพัก *</Label>
-                <Input id="bk-checkin" type="date" value={form.checkInDate} onChange={(e) => setForm((f) => ({ ...f, checkInDate: e.target.value }))} required />
+                <Label htmlFor="bk-checkin">วันที่เช็คอิน *</Label>
+                <DatePicker value={form.checkInDate} onChange={(v) => setForm((f) => ({ ...f, checkInDate: v }))} required />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="bk-checkout">วันออก *</Label>
-                <Input id="bk-checkout" type="date" value={form.checkOutDate} min={form.checkInDate} onChange={(e) => setForm((f) => ({ ...f, checkOutDate: e.target.value }))} required />
+                <Label htmlFor="bk-checkout">วันที่เช็คเอาท์ *</Label>
+                <DatePicker value={form.checkOutDate} min={form.checkInDate} onChange={(v) => setForm((f) => ({ ...f, checkOutDate: v }))} required />
               </div>
             </div>
             {nights > 0 && selectedRoom && (
@@ -129,7 +133,7 @@ function CreateBookingDialog({ open, onClose, onSave, rooms }: {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="bk-discount">ส่วนลด (บาท)</Label>
-                <Input id="bk-discount" type="number" min={0} value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))} />
+                <Input id="bk-discount" type="number" min={0} step="any" value={form.discountAmount} onChange={(e) => setForm((f) => ({ ...f, discountAmount: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="bk-notes">หมายเหตุ</Label>
@@ -216,7 +220,7 @@ function PaymentDialog({ booking, onClose, onSave }: { booking: Booking; onClose
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label>จำนวนเงิน (บาท) *</Label>
-            <Input type="number" min={1} max={remaining} placeholder={String(remaining)} value={amount} onChange={(e) => setAmount(e.target.value)} required />
+            <Input type="number" min={1} max={remaining} step="any" placeholder={String(remaining)} value={amount} onChange={(e) => setAmount(e.target.value)} required />
           </div>
           <div className="space-y-1.5">
             <Label>ช่องทางชำระ *</Label>
@@ -262,15 +266,14 @@ export default function BookingsPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [b, r] = await Promise.all([getBookings(), getRooms()]);
-      setBookings(b); setRooms(r);
-      
-      const dashRes = await api.get("/api/dashboard");
-      const dashJson = dashRes.data;
-      if (dashJson.success && dashJson.data.hotelName) {
-        setHotelName(dashJson.data.hotelName);
+      const [bRes, r] = await Promise.all([api.get("/api/bookings"), getRooms()]);
+      setBookings(bRes.data.data);
+      setRooms(r);
+
+      if (bRes.data.hotelName) {
+        setHotelName(bRes.data.hotelName);
       }
-    } catch { toast.error("ไม่สามารถโหลดข้อมูลได้"); }
+    } catch (err) { toast.error("ไม่สามารถโหลดข้อมูลได้"); }
     finally { setLoading(false); }
   }, []);
 
@@ -309,6 +312,19 @@ export default function BookingsPage() {
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-1.5" />สร้างการจอง
         </Button>
+      </div>
+
+      {/* Info Alert */}
+      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm">
+        <h3 className="font-semibold text-primary mb-1 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" /> แนะนำการใช้งานระบบจองห้องพัก
+        </h3>
+        <p className="text-muted-foreground leading-relaxed">
+          1. <strong>รอยืนยัน (PENDING) / ยืนยันแล้ว (CONFIRMED)</strong>: แขกทำการจองห้องพักล่วงหน้าแต่ยังไม่เข้าพัก<br />
+          2. <strong>เข้าพักแล้ว (CHECKED_IN)</strong>: แขกเดินทางมาถึงและเข้าพัก (กดปุ่ม Check-in)<br />
+          3. <strong>ออกแล้ว (CHECKED_OUT)</strong>: แขกคืนห้องและออกจากโรงแรม (กดปุ่ม Check-out)<br />
+          <span className="text-xs opacity-80 mt-1 block">* ห้องที่ติดสัญญาเช่า หรือมีผู้เข้าพักอยู่ จะไม่สามารถจองซ้ำได้</span>
+        </p>
       </div>
 
       {/* Search + Tabs */}

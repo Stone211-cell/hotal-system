@@ -69,23 +69,39 @@ export async function GET(request: NextRequest) {
     let totalExpense = 0;
 
     if (member.permissions.canViewFinance) {
-      // รายรับ (payment ที่ชำระในช่วงเวลา)
+      // รายรับ (payment ของการจองรายวัน)
       const payments = await prisma.payment.findMany({
         where: {
           booking: { hotelId },
           paidAt: { gte: from, lte: to },
         },
       });
-      totalIncome = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
+      const bookingsIncome = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
 
-      // รายจ่ายในช่วงเวลา
+      // รายรับ (บิลค่าเช่าของระบบหอพักรายเดือน ที่จ่ายแล้ว)
+      const paidBills = await prisma.bill.findMany({
+        where: {
+          contract: { hotelId },
+          status: "PAID",
+          paidAt: { gte: from, lte: to },
+        },
+      });
+      const billsIncome = paidBills.reduce((sum: number, b: any) => sum + b.totalAmount, 0);
+
+      totalIncome = bookingsIncome + billsIncome;
+
+      // รายจ่ายและรายรับอื่นๆ ในช่วงเวลา
       const expenses = await prisma.expense.findMany({
         where: {
           hotelId,
           date: { gte: from, lte: to },
         },
       });
-      totalExpense = expenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+      const manualIncome = expenses.filter((e: any) => e.type === "INCOME").reduce((sum: number, e: any) => sum + e.amount, 0);
+      const actualExpense = expenses.filter((e: any) => e.type !== "INCOME").reduce((sum: number, e: any) => sum + e.amount, 0);
+      
+      totalIncome += manualIncome;
+      totalExpense = actualExpense;
     }
 
     // การจองในช่วงเวลาเฉพาะของโรงแรมนี้

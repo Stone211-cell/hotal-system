@@ -202,12 +202,18 @@ model Expense {
   hotel       Hotel       @relation(fields: [hotelId], references: [id], onDelete: Cascade)
   bookingId   String?
   booking     Booking?    @relation(fields: [bookingId], references: [id])
+  type        TransactionType @default(EXPENSE)
   category    String      // ประเภทรายจ่าย
   description String
   amount      Float
   date        DateTime    @default(now())
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
 }
 
 // ==========================================
@@ -226,6 +232,7 @@ model Contract {
   tenant         Guest          @relation(fields: [tenantId], references: [id])
   startDate      DateTime
   endDate        DateTime
+  paymentDueDay  Int            @default(5)    // วันกำหนดชำระรายเดือน
   depositAmount  Float          // ค่ามัดจำ/ประกัน
   rentAmount     Float          // ค่าเช่ารายเดือนตามสัญญา
   status         ContractStatus @default(ACTIVE)

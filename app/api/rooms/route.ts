@@ -43,11 +43,15 @@ export async function GET(request: NextRequest) {
           orderBy: { checkInDate: "desc" },
           take: 1,
         },
+        contracts: {
+          where: { status: "ACTIVE" },
+          take: 1,
+        },
       },
       orderBy: [{ floor: "asc" }, { roomNumber: "asc" }],
     });
 
-    return NextResponse.json({ data: rooms, success: true });
+    return NextResponse.json({ data: rooms, permissions: member.permissions, success: true });
   } catch (error) {
     console.error("[GET /api/rooms]", error);
     return NextResponse.json(

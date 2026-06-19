@@ -34,6 +34,7 @@ export interface Room {
   createdAt: string;
   updatedAt: string;
   bookings?: Booking[];
+  contracts?: any[];
 }
 
 export interface Booking {
@@ -51,6 +52,8 @@ export interface Guest {
   lastName: string;
   phone: string;
   email?: string;
+  idNumber?: string;
+  address?: string;
 }
 
 export interface CreateRoomInput {

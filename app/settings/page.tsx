@@ -61,37 +61,38 @@ export default function SettingsPage() {
   // Fetch current user and members
   const fetchSettingsData = async () => {
     try {
-      // 1. Get current member context
-      const contextRes = await api.get("/api/dashboard"); // We can get it or call a dashboard endpoint to check session
-      // Wait, dashboard endpoint contains session context, but it doesn't give member directly, let's fetch members list and check error or see who we are.
-      // Alternatively, we can check a simple endpoint or list members
       const membersRes = await api.get("/api/members");
       const membersJson = membersRes.data;
 
       if (membersJson.success) {
         setMembers(membersJson.data);
         setIsOwner(true); // If we successfully queried members, we are the OWNER
-      } else {
-        setIsOwner(false); // Staf members get 403 / fail
-      }
-
-      // Fetch hotel info (we can get it from dashboard payload or a custom call)
-      const dashRes = await api.get("/api/dashboard");
-      const dashJson = dashRes.data;
-      if (dashJson.success) {
-        // Since we refactored api/dashboard to return hotel info (we didn't add it in payload, but we can display general details)
-        // Let's create a temporary mock or fallback for hotel info
+        
         setHotelInfo({
-          name: dashJson.data.hotelName || "โรงแรมของฉัน",
+          name: membersJson.hotelName || "โรงแรมของฉัน",
           description: "ระบบจัดการส่วนตัว",
           subscriptionStatus: "ACTIVE",
           rentAmount: 1500,
           overdueMonths: 0
         });
+      } else {
+        setIsOwner(false); // Staf members get 403 / fail
+        // If staff, we might want to get hotel info from somewhere else or we just leave it default
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("ไม่สามารถเชื่อมต่อระบบตั้งค่าได้");
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        setIsOwner(false);
+        setHotelInfo({
+          name: err.response?.data?.hotelName || "โรงแรมของฉัน",
+          description: "ระบบจัดการส่วนตัว",
+          subscriptionStatus: "ACTIVE",
+          rentAmount: 1500,
+          overdueMonths: 0
+        });
+      } else {
+        console.error(err);
+        toast.error("ไม่สามารถเชื่อมต่อระบบตั้งค่าได้");
+      }
     } finally {
       setLoading(false);
     }

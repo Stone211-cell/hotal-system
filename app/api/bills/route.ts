@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/authHelper";
+import nodemailer from "nodemailer";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       orderBy: [{ year: "desc" }, { month: "desc" }],
     });
 
-    return NextResponse.json({ data: bills, success: true });
+    return NextResponse.json({ data: bills, hotelName: member.hotelName, success: true });
   } catch (error) {
     console.error("[GET /api/bills]", error);
     return NextResponse.json({ message: "ไม่สามารถดึงข้อมูลบิลได้", success: false }, { status: 500 });
@@ -134,6 +135,47 @@ export async function POST(request: NextRequest) {
         contract: { include: { room: true, tenant: true } },
       },
     });
+
+    // Send email notification if tenant has email
+    const tenantEmail = bill.contract.tenant.email;
+    if (tenantEmail && process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_PORT === "465",
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        const mailOptions = {
+          from: `"ระบบจัดการหอพัก" <${process.env.SMTP_USER}>`,
+          to: tenantEmail,
+          subject: `แจ้งเตือนบิลค่าเช่าห้อง ${bill.contract.room.roomNumber} ประจำเดือน ${month}/${year}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px;">แจ้งเตือนบิลค่าเช่าห้องพัก</h2>
+              <p>เรียนคุณ <strong>${bill.contract.tenant.firstName} ${bill.contract.tenant.lastName}</strong>,</p>
+              <p>ระบบได้ทำการออกบิลค่าเช่าห้อง <strong>${bill.contract.room.roomNumber}</strong> ประจำเดือน <strong>${month}/${year}</strong> เรียบร้อยแล้ว</p>
+              
+              <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>ยอดที่ต้องชำระทั้งสิ้น:</strong> <span style="font-size: 1.2em; color: #e11d48; font-weight: bold;">${totalAmount.toLocaleString()} บาท</span></p>
+                <p style="margin: 5px 0;"><strong>ครบกำหนดชำระ:</strong> ${new Date(dueDate).toLocaleDateString("th-TH")}</p>
+              </div>
+              
+              <p style="color: #666; font-size: 0.9em;">กรุณาชำระเงินก่อนวันครบกำหนด เพื่อหลีกเลี่ยงค่าปรับ (ถ้ามี)</p>
+              <br/>
+              <p style="color: #888; font-size: 0.8em; border-top: 1px solid #eee; padding-top: 10px;">อีเมลฉบับนี้ส่งจากระบบอัตโนมัติ กรุณาไม่ต้องตอบกลับ</p>
+            </div>
+          `,
+        };
+        await transporter.sendMail(mailOptions);
+      } catch (emailErr) {
+        console.error("Failed to send email:", emailErr);
+      }
+    }
 
     return NextResponse.json({ data: bill, success: true }, { status: 201 });
   } catch (error) {

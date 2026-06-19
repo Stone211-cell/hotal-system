@@ -40,24 +40,26 @@ export async function POST(request: NextRequest) {
     // ส่งอีเมลไปยังแอดมินหลัก
     const adminEmail = process.env.FEEDBACK_ADMIN_EMAIL;
     if (adminEmail && process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === "true",
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT) || 587,
+          secure: process.env.SMTP_SECURE === "true",
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
 
-      await transporter.sendMail({
-        from: `"Hotel System Feedback" <${process.env.SMTP_USER}>`,
-        to: adminEmail,
-        subject: `[Feedback] ${subject}`,
-        text: `มีข้อความ Feedback ใหม่เข้าสู่ระบบ:\n\nจาก: ${senderEmail}\nหัวข้อ: ${subject}\nข้อความ:\n${message}`,
-      }).catch(err => {
+        await transporter.sendMail({
+          from: `"Hotel System Feedback" <${process.env.SMTP_USER}>`,
+          to: adminEmail,
+          subject: `[Feedback] ${subject}`,
+          text: `มีข้อความ Feedback ใหม่เข้าสู่ระบบ:\n\nจาก: ${senderEmail}\nหัวข้อ: ${subject}\nข้อความ:\n${message}`,
+        });
+      } catch (err) {
         console.error("[Email Sending Error]", err);
-      });
+      }
     }
 
     return NextResponse.json({ data: feedback, success: true }, { status: 201 });

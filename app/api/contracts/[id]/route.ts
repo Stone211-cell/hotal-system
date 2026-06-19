@@ -74,13 +74,32 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     const body = await request.json();
-    const { status, notes } = body;
+    const { status, notes, startDate, endDate, paymentDueDay, depositAmount, rentAmount, tenant } = body;
+
+    // Optional: update tenant if tenant data is provided
+    if (tenant) {
+      await prisma.guest.update({
+        where: { id: existingContract.tenantId },
+        data: {
+          firstName: tenant.firstName,
+          lastName: tenant.lastName,
+          phone: tenant.phone,
+          idNumber: tenant.idNumber,
+          address: tenant.address,
+        }
+      });
+    }
 
     const contract = await prisma.contract.update({
       where: { id },
       data: {
         ...(status && { status }),
         ...(notes !== undefined && { notes }),
+        ...(startDate && { startDate: new Date(startDate) }),
+        ...(endDate && { endDate: new Date(endDate) }),
+        ...(paymentDueDay !== undefined && { paymentDueDay: Number(paymentDueDay) }),
+        ...(depositAmount !== undefined && { depositAmount: Number(depositAmount) }),
+        ...(rentAmount !== undefined && { rentAmount: Number(rentAmount) }),
       },
       include: { room: true },
     });
@@ -90,6 +109,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
       await prisma.room.update({
         where: { id: contract.roomId },
         data: { status: "AVAILABLE" },
+      });
+    } else if (status === "ACTIVE") {
+      await prisma.room.update({
+        where: { id: contract.roomId },
+        data: { status: "OCCUPIED" },
       });
     }
 
