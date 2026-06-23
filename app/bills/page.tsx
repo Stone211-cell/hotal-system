@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getBills, createBill, payBill, deleteBill, Bill, BillStatus, PaymentMethod } from "@/services/dormService";
 import { getContracts, Contract } from "@/services/dormService";
 import api from "@/lib/axios";
@@ -43,6 +43,7 @@ function BillDialog({ open, onClose, onSave, contracts, bills }: { open: boolean
     otherCharges: "0", otherChargesNote: "", dueDate: format(endOfMonth(new Date()), "yyyy-MM-dd"),
   });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const [isAdvance, setIsAdvance] = useState(false);
   const [includeDeposit, setIncludeDeposit] = useState(false);
@@ -170,6 +171,8 @@ function BillDialog({ open, onClose, onSave, contracts, bills }: { open: boolean
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedContract) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await createBill({
@@ -188,10 +191,13 @@ function BillDialog({ open, onClose, onSave, contracts, bills }: { open: boolean
         dueDate: form.dueDate,
       });
       toast.success("ออกบิลสำเร็จ");
-      onSave(); onClose();
+      onClose(); onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      submittingRef.current = false;
+    }
   };
 
   return (
@@ -351,17 +357,23 @@ function PayBillDialog({ bill, onClose, onSave }: { bill: Bill; onClose: () => v
   const [method, setMethod] = useState<PaymentMethod>("TRANSFER");
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await payBill(bill.id, method, reference || undefined);
       toast.success("รับชำระเงินสำเร็จ");
-      onSave(); onClose();
+      onClose(); onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      submittingRef.current = false;
+    }
   };
 
   return (
@@ -410,8 +422,8 @@ export default function BillsPage() {
   const [printBill, setPrintBill] = useState<Bill | null>(null);
   const [hotelName, setHotelName] = useState("หอพักของฉัน");
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [bRes, c] = await Promise.all([api.get("/api/bills"), getContracts()]);
       setBills(bRes.data.data);
@@ -421,10 +433,10 @@ export default function BillsPage() {
         setHotelName(bRes.data.hotelName);
       }
     } catch { toast.error("ไม่สามารถโหลดข้อมูลได้"); }
-    finally { setLoading(false); }
+    finally { if (showLoading) setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchAll(true); }, [fetchAll]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("ต้องการลบบิลนี้ใช่หรือไม่?")) return;

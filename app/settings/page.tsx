@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,8 @@ export default function SettingsPage() {
   const [canManageRooms, setCanManageRooms] = useState(false);
   const [canManageBookings, setCanManageBookings] = useState(true);
   const [canViewFinance, setCanViewFinance] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
+  const addMemberRef = useRef(false);
 
   // Fetch current user and members
   const fetchSettingsData = async () => {
@@ -108,6 +110,9 @@ export default function SettingsPage() {
       toast.error("กรุณากรอกอีเมลพนักงาน");
       return;
     }
+    if (addMemberRef.current) return;
+    addMemberRef.current = true;
+    setAddingMember(true);
 
     try {
       const res = await api.post("/api/members", {
@@ -134,6 +139,9 @@ export default function SettingsPage() {
     } catch (err) {
       console.error(err);
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setAddingMember(false);
+      addMemberRef.current = false;
     }
   };
 
@@ -288,8 +296,8 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <Button type="submit" className="w-full rounded-xl h-10 mt-4">
-                      เพิ่มพนักงาน
+                    <Button type="submit" className="w-full rounded-xl h-10 mt-4" disabled={addingMember}>
+                      {addingMember ? "กำลังเพิ่ม..." : "เพิ่มพนักงาน"}
                     </Button>
                   </div>
                 </form>

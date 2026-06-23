@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +82,8 @@ export default function SuperAdminPage() {
   const [deleteConfirmHotel, setDeleteConfirmHotel] = useState<Hotel | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitRef = useRef(false);
   const router = useRouter();
 
   // Create Form State
@@ -199,6 +201,9 @@ export default function SuperAdminPage() {
       toast.error("กรุณากรอกข้อมูลให้ครบถ้วน");
       return;
     }
+    if (submitRef.current) return;
+    submitRef.current = true;
+    setIsSubmitting(true);
 
     try {
       // 1. สร้างโรงแรม
@@ -239,6 +244,9 @@ export default function SuperAdminPage() {
     } catch (err) {
       console.error(err);
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsSubmitting(false);
+      submitRef.current = false;
     }
   };
 
@@ -257,6 +265,9 @@ export default function SuperAdminPage() {
   const handleUpdateHotel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedHotel) return;
+    if (submitRef.current) return;
+    submitRef.current = true;
+    setIsSubmitting(true);
 
     try {
       const res = await api.patch(`/api/superadmin/hotels/${selectedHotel.id}`, {
@@ -280,6 +291,9 @@ export default function SuperAdminPage() {
     } catch (err) {
       console.error(err);
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+    } finally {
+      setIsSubmitting(false);
+      submitRef.current = false;
     }
   };
 
@@ -667,8 +681,8 @@ export default function SuperAdminPage() {
 
             <DialogFooter className="pt-4 border-t mt-4">
               <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl h-10">ยกเลิก</Button>
-              <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-10 shadow-md shadow-violet-500/20">
-                อนุมัติและสร้างสิทธิ์
+              <Button type="submit" disabled={isSubmitting} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-10 shadow-md shadow-violet-500/20">
+                {isSubmitting ? "กำลังบันทึก..." : "อนุมัติและสร้างสิทธิ์"}
               </Button>
             </DialogFooter>
           </form>
@@ -736,8 +750,8 @@ export default function SuperAdminPage() {
 
             <DialogFooter className="pt-2 border-t">
               <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl h-10">ยกเลิก</Button>
-              <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-10 shadow-md shadow-violet-500/20">
-                บันทึกการเปลี่ยนแปลง
+              <Button type="submit" disabled={isSubmitting} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-10 shadow-md shadow-violet-500/20">
+                {isSubmitting ? "กำลังบันทึก..." : "บันทึกการเปลี่ยนแปลง"}
               </Button>
             </DialogFooter>
           </form>

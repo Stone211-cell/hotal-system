@@ -7,17 +7,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to bypass browser caching on GET requests
-api.interceptors.request.use((config) => {
-  if (config.method === "get") {
-    config.params = {
-      ...config.params,
-      _t: Date.now(),
-    };
-  }
-  return config;
-});
-
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,

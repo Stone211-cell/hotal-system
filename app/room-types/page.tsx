@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getRoomTypes, createRoomType, updateRoomType, deleteRoomType, RoomType, CreateRoomTypeInput } from "@/services/roomService";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ export default function RoomTypesPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingType, setEditingType] = useState<RoomType | null>(null);
+  const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false);
 
   // Form states
   const [name, setName] = useState("");
@@ -62,6 +64,9 @@ export default function RoomTypesPage() {
       toast.error("กรุณากรอกชื่อหมวดหมู่และราคาพื้นฐาน");
       return;
     }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSaving(true);
 
     try {
       const payload: CreateRoomTypeInput = {
@@ -81,6 +86,9 @@ export default function RoomTypesPage() {
       fetchData();
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+      setSaving(false);
+      submittingRef.current = false;
     }
   };
 
@@ -226,8 +234,8 @@ export default function RoomTypesPage() {
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1 rounded-xl h-10">
                 ยกเลิก
               </Button>
-              <Button type="submit" className="flex-1 rounded-xl h-10">
-                บันทึกข้อมูล
+              <Button type="submit" className="flex-1 rounded-xl h-10" disabled={saving}>
+                {saving ? "กำลังบันทึก..." : "บันทึกข้อมูล"}
               </Button>
             </div>
           </form>

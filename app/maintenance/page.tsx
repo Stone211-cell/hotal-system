@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   getMaintenances,
   createMaintenance,
@@ -108,6 +108,7 @@ function CreateMaintenanceDialog({
     reportedBy: "",
   });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
@@ -127,6 +128,8 @@ function CreateMaintenanceDialog({
       toast.error("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
       return;
     }
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await createMaintenance({
@@ -137,12 +140,13 @@ function CreateMaintenanceDialog({
         reportedBy: form.reportedBy || undefined,
       });
       toast.success("บันทึกแจ้งซ่อม/ทำความสะอาดสำเร็จ");
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -246,6 +250,7 @@ function ResolveTaskDialog({
   const [cost, setCost] = useState("0");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
@@ -258,6 +263,8 @@ function ResolveTaskDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await updateMaintenance(task.id, {
@@ -270,12 +277,13 @@ function ResolveTaskDialog({
           ? `เสร็จสิ้นการแจ้งซ่อมห้อง ${task.room.roomNumber} และบันทึกค่าใช้จ่ายแล้ว`
           : `เสร็จสิ้นการทำความสะอาดห้อง ${task.room.roomNumber} เรียบร้อยแล้ว`
       );
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -343,8 +351,8 @@ export default function MaintenancePage() {
   const [resolveTarget, setResolveTarget] = useState<RoomMaintenance | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [list, r] = await Promise.all([getMaintenances(), getRooms()]);
       setMaintenances(list);
@@ -352,12 +360,12 @@ export default function MaintenancePage() {
     } catch {
       toast.error("ไม่สามารถดึงข้อมูลประวัติการแจ้งซ่อมได้");
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAll();
+    fetchAll(true);
   }, [fetchAll]);
 
   const handleUpdateStatus = async (id: string, newStatus: MaintenanceStatus) => {

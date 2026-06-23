@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getExpenses, createExpense, Expense } from "@/services/dashboardService";
 import { getPayments } from "@/services/bookingService";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export default function ExpensesPage() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ type: "EXPENSE", category: "", customCategory: "", description: "", amount: "", date: format(new Date(), "yyyy-MM-dd") });
   const [saving, setSaving] = useState(false);
+  const submittingRef = useRef(false);
 
   const getDateRange = (p: number) => {
     const base = subMonths(new Date(), p);
@@ -46,8 +47,8 @@ export default function ExpensesPage() {
 
   const { from, to } = getDateRange(period);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [e, pay] = await Promise.all([
         getExpenses({ from: from.toISOString(), to: to.toISOString() }),
@@ -57,18 +58,22 @@ export default function ExpensesPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setPayments(pay as any);
     } catch { toast.error("ไม่สามารถโหลดข้อมูลได้"); }
-    finally { setLoading(false); }
+    finally { if (showLoading) setLoading(false); }
   }, [from.toISOString(), to.toISOString()]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchAll(true); }, [fetchAll]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaving(true);
     try {
       const finalCategory = form.category === "อื่นๆ" ? form.customCategory : form.category;
       if (!finalCategory) {
         toast.error("กรุณาระบุประเภท");
+        submittingRef.current = false;
+        setSaving(false);
         return;
       }
       await createExpense({ type: form.type, category: finalCategory, description: form.description, amount: Number(form.amount), date: form.date });
@@ -78,7 +83,10 @@ export default function ExpensesPage() {
       fetchAll();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+      submittingRef.current = false;
+    }
   };
 
   const filteredPayments = payments.filter((p) => {

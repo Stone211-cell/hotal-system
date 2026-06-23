@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getRooms, getRoomTypes, createRoom, createRoomType, updateRoom, deleteRoom, Room, RoomType, CreateRoomInput, RoomStatus, updateRoomStatus } from "@/services/roomService";
 import { checkInBooking, checkOutBooking, createBooking } from "@/services/bookingService";
 import { createMaintenance } from "@/services/maintenanceService";
@@ -109,6 +109,7 @@ function RoomFormDialog({
   const [amenitiesInput, setAmenitiesInput] = useState("");
   const [createCount, setCreateCount] = useState(1);
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (editRoom) {
@@ -142,6 +143,8 @@ function RoomFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       const amenities = amenitiesInput
@@ -184,12 +187,13 @@ function RoomFormDialog({
         await Promise.all(promises);
         toast.success(count > 1 ? `เพิ่มห้องพัก ${count} ห้อง สำเร็จ` : "เพิ่มห้องสำเร็จ");
       }
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -358,9 +362,12 @@ function RoomTypeDialog({
 }) {
   const [form, setForm] = useState({ name: "", description: "", basePrice: "" });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await createRoomType({
@@ -369,12 +376,13 @@ function RoomTypeDialog({
         basePrice: Number(form.basePrice),
       });
       toast.success("เพิ่มประเภทห้องสำเร็จ");
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -440,9 +448,12 @@ function QuickCheckInDialog({ open, onClose, onSave, room }: { open: boolean; on
     discountAmount: "0", notes: ""
   });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       const booking = await createBooking({
@@ -463,12 +474,13 @@ function QuickCheckInDialog({ open, onClose, onSave, room }: { open: boolean; on
 
       await checkInBooking(booking.id);
       toast.success("เช็คอินสำเร็จแล้ว");
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -537,9 +549,12 @@ function QuickCheckInDialog({ open, onClose, onSave, room }: { open: boolean; on
 function MaintenanceReportDialog({ open, onClose, onSave, room }: { open: boolean; onClose: () => void; onSave: () => void; room: Room; }) {
   const [form, setForm] = useState({ title: "", description: "", type: "CLEANING" as "CLEANING" | "REPAIR" });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await createMaintenance({
@@ -549,12 +564,13 @@ function MaintenanceReportDialog({ open, onClose, onSave, room }: { open: boolea
         type: form.type,
       });
       toast.success("สร้างรายการแจ้งซ่อม/ทำความสะอาดสำเร็จ");
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -662,8 +678,8 @@ export default function RoomsPage() {
     }
   };
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [rRes, rt] = await Promise.all([api.get("/api/rooms"), getRoomTypes()]);
       setRooms(rRes.data.data);
@@ -676,12 +692,12 @@ export default function RoomsPage() {
       toast.error("ไม่สามารถโหลดข้อมูลได้");
       console.error(err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAll();
+    fetchAll(true);
   }, [fetchAll]);
 
   const handleDelete = async () => {

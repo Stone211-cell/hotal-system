@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   getBookings, createBooking, checkInBooking, checkOutBooking,
   cancelBooking, createPayment, Booking, BookingStatus, PaymentMethod,
@@ -53,6 +53,7 @@ function CreateBookingDialog({ open, onClose, onSave, rooms }: {
     discountAmount: "0", notes: "",
   });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (!open) setForm({ roomId: "", checkInDate: "", checkOutDate: "", firstName: "", lastName: "", phone: "", email: "", idNumber: "", discountAmount: "0", notes: "" });
@@ -67,6 +68,8 @@ function CreateBookingDialog({ open, onClose, onSave, rooms }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRoom) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await createBooking({
@@ -79,10 +82,13 @@ function CreateBookingDialog({ open, onClose, onSave, rooms }: {
         notes: form.notes || undefined,
       });
       toast.success("สร้างการจองสำเร็จ");
-      onSave(); onClose();
+      onClose(); onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      submittingRef.current = false;
+    }
   };
 
   const availableRooms = rooms.filter((r) => 
@@ -191,20 +197,26 @@ function PaymentDialog({ booking, onClose, onSave }: { booking: Booking; onClose
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [reference, setReference] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
   const totalPaid = (booking.payments || []).reduce((s, p) => s + p.amount, 0);
   const remaining = booking.finalAmount - totalPaid;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       await createPayment({ bookingId: booking.id, amount: Number(amount), method, reference: reference || undefined });
       toast.success("บันทึกการชำระเงินสำเร็จ");
-      onSave(); onClose();
+      onClose(); onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      submittingRef.current = false;
+    }
   };
 
   return (
@@ -263,8 +275,8 @@ export default function BookingsPage() {
   const [hotelName, setHotelName] = useState("โรงแรมของฉัน");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [bRes, r] = await Promise.all([api.get("/api/bookings"), getRooms()]);
       setBookings(bRes.data.data);
@@ -274,10 +286,10 @@ export default function BookingsPage() {
         setHotelName(bRes.data.hotelName);
       }
     } catch (err) { toast.error("ไม่สามารถโหลดข้อมูลได้"); }
-    finally { setLoading(false); }
+    finally { if (showLoading) setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchAll(true); }, [fetchAll]);
 
   const handleAction = async (action: "checkin" | "checkout" | "cancel", booking: Booking) => {
     setActionLoading(booking.id);

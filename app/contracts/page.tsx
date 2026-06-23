@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getContracts, createContract, updateContractStatus, Contract, ContractStatus } from "@/services/dormService";
 import { getRooms, Room } from "@/services/roomService";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ function ContractDialog({ open, onClose, onSave, rooms, editData, contracts }: {
     depositAmount: "", rentAmount: "", notes: "",
   });
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [saveHistory, setSaveHistory] = useState(false);
 
   useEffect(() => {
@@ -80,6 +81,8 @@ function ContractDialog({ open, onClose, onSave, rooms, editData, contracts }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     try {
       const payload = {
@@ -110,14 +113,16 @@ function ContractDialog({ open, onClose, onSave, rooms, editData, contracts }: {
         await createContract(payload);
         toast.success("สร้างสัญญาเช่าสำเร็จ");
       }
-      onSave();
       onClose();
+      onSave();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "เกิดข้อผิดพลาด");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -229,16 +234,16 @@ export default function ContractsPage() {
   const [editContract, setEditContract] = useState<Contract | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
+  const fetchAll = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [c, r] = await Promise.all([getContracts(), getRooms()]);
       setContracts(c); setRooms(r);
     } catch { toast.error("ไม่สามารถโหลดข้อมูลได้"); }
-    finally { setLoading(false); }
+    finally { if (showLoading) setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { fetchAll(true); }, [fetchAll]);
 
   const handleStatusChange = async (contract: Contract, status: ContractStatus) => {
     if (!confirm(`ยืนยันการเปลี่ยนสถานะสัญญาห้อง ${contract.room.roomNumber} เป็น ${statusConfig[status].label}?`)) return;
