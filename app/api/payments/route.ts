@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/authHelper";
+import { sendLineToAdmin } from "@/lib/line-api";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,28 @@ export async function POST(request: NextRequest) {
       where: { id: bookingId },
       data: { paymentStatus },
     });
+
+    // 🔔 แจ้งเตือนเจ้าของโรงแรมผ่าน LINE
+    const guestName = booking.guest
+      ? `${(booking as any).guest?.firstName || ''} ${(booking as any).guest?.lastName || ''}`.trim()
+      : 'ไม่ระบุ';
+    const methodLabel: Record<string, string> = {
+      CASH: '💵 เงินสด',
+      TRANSFER: '🏦 โอนเงิน',
+      CREDIT_CARD: '💳 บัตรเครดิต',
+      QR_CODE: '📒 QR Code',
+    };
+    await sendLineToAdmin(
+      `💳 ได้รับชำระเงิน!
+` +
+      `👤 ลูกค้า: ${guestName}
+` +
+      `💰 ยอด: ${Number(amount).toLocaleString()} บาท
+` +
+      `💳 วิธีชำระ: ${methodLabel[method] || method}
+` +
+      `📋 สถานะ: ${paymentStatus === 'PAID' ? '✅ ชำระครบ' : '⏳ ชำระบางส่วน'}`
+    );
 
     return NextResponse.json({ data: payment, success: true }, { status: 201 });
   } catch (error) {

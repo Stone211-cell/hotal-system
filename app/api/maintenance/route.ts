@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/authHelper";
+import { sendLineToAdmin } from "@/lib/line-api";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,20 @@ export async function POST(request: NextRequest) {
         data: { status: "MAINTENANCE" }
       });
     }
+
+    // 🔔 แจ้งเตือนเจ้าของโรงแรมผ่าน LINE
+    const typeLabel = type === 'REPAIR' ? '🔧 แจ้งซ่อม' : '🧹 ทำความสะอาด';
+    await sendLineToAdmin(
+      `${typeLabel} มีรายการใหม่!
+` +
+      `🚪 ห้อง: ${record.room.roomNumber}
+` +
+      `📌 หัวข้อ: ${title}` +
+      (description ? `
+📝 รายละเอียด: ${description}` : '') +
+      (reportedBy ? `
+👤 แจ้งโดย: ${reportedBy}` : '')
+    );
 
     return NextResponse.json({ data: record, success: true }, { status: 201 });
   } catch (error) {

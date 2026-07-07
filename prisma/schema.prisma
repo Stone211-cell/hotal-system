@@ -124,6 +124,7 @@ model Guest {
   idNumber    String?     // เลขบัตรประชาชน/พาสปอร์ต
   nationality String?     @default("Thai")
   address     String?     // ที่อยู่ (สำหรับสัญญาเช่า)
+  lineUserId  String?     // LINE User ID สำหรับส่งแจ้งเตือนบิลให้ลูกค้า
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   bookings    Booking[]

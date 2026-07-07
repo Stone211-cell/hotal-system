@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentMember } from "@/lib/authHelper";
+import { sendLineToAdmin } from "@/lib/line-api";
 
 export const dynamic = "force-dynamic";
 
@@ -197,6 +198,23 @@ export async function POST(request: NextRequest) {
       where: { id: roomId },
       data: { status: "RESERVED" },
     });
+
+    // 🔔 แจ้งเตือนเจ้าของโรงแรมผ่าน LINE
+    const checkInStr = booking.checkInDate.toLocaleDateString("th-TH");
+    const checkOutStr = booking.checkOutDate.toLocaleDateString("th-TH");
+    await sendLineToAdmin(
+      `🛎️ มีการจองใหม่!
+` +
+      `👤 ลูกค้า: ${booking.guest.firstName} ${booking.guest.lastName}
+` +
+      `🚪 ห้อง: ${booking.room.roomNumber}
+` +
+      `📅 เช็คอิน: ${checkInStr}
+` +
+      `📅 เช็คเอาท์: ${checkOutStr}
+` +
+      `💰 ยอดรวม: ${booking.finalAmount.toLocaleString()} บาท`
+    );
 
     return NextResponse.json({ data: booking, success: true }, { status: 201 });
   } catch (error) {
