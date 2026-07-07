@@ -27,27 +27,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const body = JSON.parse(rawBody);
-    const events = body.events || [];
-
-    // วนลูปจัดการทุก event ที่เข้ามา
-    for (const event of events) {
-      // รองรับเฉพาะ event ประเภท message ที่เป็น text เท่านั้น
-      if (event.type !== "message" || event.message?.type !== "text") continue;
-
-      const userMessage: string = event.message.text.trim().toLowerCase();
-      const replyToken: string = event.replyToken;
-
-      // ค้นหาคีย์เวิร์ดที่ตรงกัน (ค้นหาแบบ includes เพื่อรองรับประโยคยาวๆ)
-      const matched = KEYWORD_REPLIES.find((item) =>
-        userMessage.includes(item.keyword.toLowerCase())
-      );
-
-      const replyText = matched ? matched.reply : DEFAULT_REPLY;
-
-      // ส่งข้อความตอบกลับ
-      await replyLine(replyToken, replyText);
-    }
+    // ตอนนี้เราปิดระบบตอบกลับอัตโนมัติด้วยโค้ดแล้ว
+    // เพื่อให้ผู้ใช้สามารถไปใช้ Auto-response ของระบบ LINE OA ได้โดยตรง
+    // หากในอนาคตต้องการเก็บ log หรือทำระบบรับข้อความอื่นๆ สามารถเขียนเพิ่มตรงนี้ได้
 
     return NextResponse.json({ success: true });
   } catch (error) {
