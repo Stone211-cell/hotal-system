@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // ค้นหาการจองเฉพาะในโรงแรมของตัวเอง
     const booking = await prisma.booking.findFirst({
       where: { id: bookingId, hotelId },
-      include: { payments: true },
+      include: { payments: true, guest: true },
     });
 
     if (!booking) {

@@ -122,7 +122,6 @@ export default function SettingsPage() {
         canManageRooms,
         canManageBookings,
         canViewFinance,
-,
       });
 
       const json = res.data;
