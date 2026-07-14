@@ -50,7 +50,12 @@ function LineLinkContent() {
           setMessage("เชื่อมต่อบัญชี LINE สำหรับรับการแจ้งเตือนสำเร็จแล้ว!");
         } else {
           setStatus("error");
-          setMessage(data.message || "เกิดข้อผิดพลาดในการผูกบัญชี");
+          // แสดงข้อความให้ชัดเจนถ้าเป็นกรณีหาบัญชีไม่เจอ
+          if (res.status === 404) {
+            setMessage("ไม่พบสิทธิ์เจ้าของ/พนักงานของอีเมลนี้ โปรดใช้อีเมลเดิมที่เคยสมัครไว้ (เช่น อีเมล Google ของคุณ)");
+          } else {
+            setMessage(data.message || "เกิดข้อผิดพลาดในการผูกบัญชี");
+          }
         }
       } catch (err: any) {
         setStatus("error");

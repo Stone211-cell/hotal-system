@@ -57,9 +57,14 @@ export default function OwnerLineConnectPage() {
   }, []);
 
   const handleOpenExternal = () => {
-    if (window.liff) {
-      window.liff.openWindow({ url: readyUrl, external: true });
-    } else {
+    try {
+      if (window.liff && window.liff.openWindow) {
+        window.liff.openWindow({ url: readyUrl, external: true });
+      } else {
+        window.location.href = readyUrl;
+      }
+    } catch (e) {
+      console.error(e);
       window.location.href = readyUrl;
     }
   };
