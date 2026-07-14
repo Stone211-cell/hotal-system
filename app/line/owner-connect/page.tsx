@@ -36,10 +36,13 @@ export default function OwnerLineConnectPage() {
         const profile = await window.liff.getProfile();
         const lineUserId: string = profile.userId;
 
-        // เปลี่ยนหน้าไปยังเว็บหลักของเรา เพื่อบังคับให้ล็อกอิน Clerk ด้วย Email/Password
-        // และพกรหัส LINE ID ไปด้วยผ่าน URL parameter ?lid=...
-        window.location.href = `/line/link?lid=${lineUserId}`;
+        // เปลี่ยนหน้าไปยังเว็บหลักของเรา โดยบังคับเปิดใน External Browser (Chrome/Safari)
+        // เพื่อแก้ปัญหา Google OAuth ถูกบล็อกใน LINE
+        const targetUrl = `${window.location.origin}/line/link?lid=${lineUserId}`;
+        window.liff.openWindow({ url: targetUrl, external: true });
         
+        // ปิดหน้าต่าง LIFF ตัวเดิมทิ้งไป
+        window.liff.closeWindow();
       } catch (err: any) {
         console.error("[Owner LIFF] Error:", err);
         setMessage("ไม่สามารถเชื่อมต่อกับ LINE ได้");
