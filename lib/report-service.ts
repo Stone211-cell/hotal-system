@@ -66,9 +66,10 @@ export async function generateAndSendFinancialReport(
       }
     });
 
-    const totalIncome = 
-      paidBills.reduce((sum, bill) => sum + bill.totalAmount, 0) +
-      payments.reduce((sum, pay) => sum + pay.amount, 0);
+    // แยกประเภทรายรับ
+    const rentIncome = paidBills.reduce((sum, bill) => sum + bill.totalAmount, 0);
+    const bookingIncome = payments.reduce((sum, pay) => sum + pay.amount, 0);
+    const totalIncome = rentIncome + bookingIncome;
 
     // 2. คำนวณรายจ่าย (จาก Expense)
     const expenses = await prisma.expense.findMany({
@@ -78,35 +79,55 @@ export async function generateAndSendFinancialReport(
       }
     });
     const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
     const netProfit = totalIncome - totalExpense;
 
-    // 3. สร้างกราฟรูปภาพ (QuickChart)
-    const chartConfig = {
+    // 3. ข้อมูลเพิ่มเติม
+    const activeContracts = await prisma.contract.count({
+      where: { hotelId, status: "ACTIVE" }
+    });
+    const currentTime = format(now, "dd/MM/yyyy HH:mm:ss");
+
+    // 4. สร้างกราฟรูปภาพที่ 1 (Bar Chart - ภาพรวม)
+    const barChartConfig = {
       type: "bar",
       data: {
-        labels: ["รายรับ", "รายจ่าย", "กำไรสุทธิ"],
+        labels: ["รายรับรวม", "รายจ่าย", "กำไรสุทธิ"],
         datasets: [{
           label: title,
           data: [totalIncome, totalExpense, netProfit],
-          backgroundColor: [
-            "rgba(52, 211, 153, 0.8)", // Green
-            "rgba(248, 113, 113, 0.8)", // Red
-            "rgba(96, 165, 250, 0.8)"  // Blue
-          ]
+          backgroundColor: ["rgba(52, 211, 153, 0.8)", "rgba(248, 113, 113, 0.8)", "rgba(96, 165, 250, 0.8)"]
         }]
       },
       options: {
         plugins: {
-          datalabels: { anchor: "end", align: "top", font: { weight: "bold", size: 14 } }
+          datalabels: { anchor: "end", align: "top", font: { weight: "bold", size: 14 } },
+          title: { display: true, text: `อัปเดตข้อมูล ณ เวลา: ${currentTime}` }
         }
       }
     };
-    
-    const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=600&h=400&bkg=white`;
+    const barChartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(barChartConfig))}&w=600&h=400&bkg=white`;
 
-    // 4. สร้างเสียง AI
-    const voiceText = `สวัสดีค่ะ นี่คือรายงาน ${title} รายรับรวม ${totalIncome.toLocaleString()} บาท รายจ่าย ${totalExpense.toLocaleString()} บาท กำไรสุทธิ ${netProfit.toLocaleString()} บาทค่ะ`;
+    // 5. สร้างกราฟรูปภาพที่ 2 (Pie Chart - สัดส่วนรายรับ)
+    const pieChartConfig = {
+      type: "doughnut",
+      data: {
+        labels: ["รายรับรายเดือน (ค่าเช่า)", "รายรับรายวัน (ห้องพัก)"],
+        datasets: [{
+          data: [rentIncome, bookingIncome],
+          backgroundColor: ["rgba(16, 185, 129, 0.8)", "rgba(245, 158, 11, 0.8)"]
+        }]
+      },
+      options: {
+        plugins: {
+          datalabels: { display: true, color: "white", font: { weight: "bold", size: 14 } },
+          title: { display: true, text: `สัดส่วนรายรับ (${title})` }
+        }
+      }
+    };
+    const pieChartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(pieChartConfig))}&w=600&h=400&bkg=white`;
+
+    // 6. สร้างเสียง AI
+    const voiceText = `สวัสดีค่ะ นี่คือรายงาน ${title} รายรับรวม ${totalIncome.toLocaleString()} บาท รายจ่าย ${totalExpense.toLocaleString()} บาท กำไรสุทธิ ${netProfit.toLocaleString()} บาทค่ะ ปัจจุบันมีผู้ทำสัญญาเช่าทั้งหมด ${activeContracts} ห้องค่ะ`;
     const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(voiceText)}&tl=th&client=tw-ob`;
     
     const uploadResult = await cloudinary.uploader.upload(ttsUrl, {
@@ -117,14 +138,26 @@ export async function generateAndSendFinancialReport(
     const m4aUrl = uploadResult.secure_url;
     const durationMs = Math.max(Math.round((uploadResult.duration || 1) * 1000), 1000);
 
-    // 5. เตรียม Flex Message
-    const textMessage = `📊 *${title}*\n\n✅ รายรับ: ฿${totalIncome.toLocaleString()}\n❌ รายจ่าย: ฿${totalExpense.toLocaleString()}\n💰 กำไรสุทธิ: ฿${netProfit.toLocaleString()}`;
+    // 7. เตรียมข้อความสรุปแบบละเอียด
+    const textMessage = `📊 *${title}*\n⏰ อัปเดตเมื่อ: ${currentTime}\n\n` +
+      `✅ รายรับรวม: ฿${totalIncome.toLocaleString()}\n` +
+      `   🔸 ค่าเช่ารายเดือน: ฿${rentIncome.toLocaleString()}\n` +
+      `   🔸 ค่าห้องรายวัน: ฿${bookingIncome.toLocaleString()}\n` +
+      `❌ รายจ่ายรวม: ฿${totalExpense.toLocaleString()}\n` +
+      `💰 กำไรสุทธิ: ฿${netProfit.toLocaleString()}\n\n` +
+      `👥 ข้อมูลหอพัก:\n` +
+      `   🔹 จำนวนผู้ทำสัญญาเช่า (Active): ${activeContracts} ห้อง`;
     
     const messages = [
       {
         type: "image",
-        originalContentUrl: chartUrl,
-        previewImageUrl: chartUrl
+        originalContentUrl: barChartUrl,
+        previewImageUrl: barChartUrl
+      },
+      {
+        type: "image",
+        originalContentUrl: pieChartUrl,
+        previewImageUrl: pieChartUrl
       },
       {
         type: "text",
@@ -137,7 +170,7 @@ export async function generateAndSendFinancialReport(
       }
     ];
 
-    // 6. ส่งเข้า LINE (ถ้ามี replyToken ให้ใช้ Reply API เพื่อตอบกลับแชท, ถ้าไม่มีให้ Push)
+    // 8. ส่งเข้า LINE
     if (replyToken) {
       await axios.post(LINE_REPLY_API, { replyToken, messages }, { headers });
     } else {
