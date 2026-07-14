@@ -21,7 +21,7 @@ export async function GET() {
         { 
           message: "สิทธิ์การเข้าถึงข้อมูลนี้เฉพาะเจ้าของโรงแรม (OWNER) เท่านั้น", 
           hotelName: member.hotelName, 
-          currentMemberId: member.id, // ส่งกลับไปเพื่อให้ STAFF ผูก LINE ได้
+          currentMemberId: member.memberId, // ส่งกลับไปเพื่อให้ STAFF ผูก LINE ได้
           success: false 
         },
         { status: 403 }
@@ -36,7 +36,7 @@ export async function GET() {
     return NextResponse.json({ 
       data: members, 
       hotelName: member.hotelName, 
-      currentMemberId: member.id,
+      currentMemberId: member.memberId,
       success: true 
     });
   } catch (error) {
