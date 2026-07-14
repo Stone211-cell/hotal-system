@@ -1,6 +1,17 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+// กำหนด routes ที่ไม่ต้องล็อกอิน (สาธารณะ)
+const isPublicRoute = createRouteMatcher([
+  "/line(.*)",              // หน้า LIFF ทั้งหมด (ผูกบัญชี ฯลฯ)
+  "/api/line-webhook(.*)", // LINE Webhook (LINE ส่งมาโดยตรง ไม่มี session)
+  "/api/cron(.*)",         // Cron jobs (Vercel เรียกเอง)
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
