@@ -53,6 +53,33 @@ export async function sendLineToGuest(lineUserId: string, message: string): Prom
 }
 
 /**
+ * ส่งข้อความเสียงไปหาลูกค้า/ผู้เช่าโดยตรง
+ * originalContentUrl ต้องเป็น URL ของไฟล์ .m4a และเป็น https
+ */
+export async function sendLineAudioToGuest(lineUserId: string, originalContentUrl: string, durationMs: number = 60000): Promise<void> {
+  if (!lineUserId || !TOKEN) return;
+
+  try {
+    await axios.post(
+      LINE_API,
+      {
+        to: lineUserId,
+        messages: [
+          { 
+            type: "audio", 
+            originalContentUrl: originalContentUrl,
+            duration: durationMs
+          }
+        ],
+      },
+      { headers }
+    );
+  } catch (err: any) {
+    console.error("[LINE Guest Audio Notify] Error:", err?.response?.data || err.message);
+  }
+}
+
+/**
  * ตอบกลับข้อความ (ใช้ใน Webhook)
  * replyToken ได้มาจาก LINE Webhook event
  */

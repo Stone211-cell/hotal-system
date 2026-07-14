@@ -49,6 +49,7 @@ model HotelMember {
   hotelId           String
   hotel             Hotel      @relation(fields: [hotelId], references: [id], onDelete: Cascade)
   userId            String?    // Clerk User ID (จะใส่เมื่อเข้าสู่ระบบครั้งแรก)
+  lineUserId        String?    @unique // LINE User ID สำหรับรับแจ้งเตือน
   email             String     @unique // ใช้อีเมลเป็นหลักในการจับคู่ตอน Admin เพิ่มพนักงาน
   name              String?
   role              MemberRole @default(STAFF)
