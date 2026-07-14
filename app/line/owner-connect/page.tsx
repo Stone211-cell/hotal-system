@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 
 declare global {
   interface Window {
@@ -11,6 +11,7 @@ declare global {
 
 export default function OwnerLineConnectPage() {
   const [message, setMessage] = useState("กำลังเชื่อมต่อ LINE...");
+  const [readyUrl, setReadyUrl] = useState("");
 
   useEffect(() => {
     const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID!;
@@ -36,13 +37,11 @@ export default function OwnerLineConnectPage() {
         const profile = await window.liff.getProfile();
         const lineUserId: string = profile.userId;
 
-        // เปลี่ยนหน้าไปยังเว็บหลักของเรา โดยบังคับเปิดใน External Browser (Chrome/Safari)
-        // เพื่อแก้ปัญหา Google OAuth ถูกบล็อกใน LINE
+        // เตรียม URL สำหรับเปิดในเบราว์เซอร์ภายนอก
         const targetUrl = `${window.location.origin}/line/link?lid=${lineUserId}`;
-        window.liff.openWindow({ url: targetUrl, external: true });
+        setReadyUrl(targetUrl);
+        setMessage(""); // ซ่อนข้อความโหลด
         
-        // ปิดหน้าต่าง LIFF ตัวเดิมทิ้งไป
-        window.liff.closeWindow();
       } catch (err: any) {
         console.error("[Owner LIFF] Error:", err);
         setMessage("ไม่สามารถเชื่อมต่อกับ LINE ได้");
@@ -57,6 +56,14 @@ export default function OwnerLineConnectPage() {
     };
   }, []);
 
+  const handleOpenExternal = () => {
+    if (window.liff) {
+      window.liff.openWindow({ url: readyUrl, external: true });
+    } else {
+      window.location.href = readyUrl;
+    }
+  };
+
   return (
     <div
       style={{
@@ -66,25 +73,68 @@ export default function OwnerLineConnectPage() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "16px",
+        padding: "24px",
         background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
         fontFamily: "'Noto Sans Thai', 'Sarabun', sans-serif",
       }}
     >
-      <div style={{ textAlign: "center" }}>
-        <Loader2
-          style={{
-            width: "48px",
-            height: "48px",
-            color: "#3b82f6",
-            animation: "spin 1s linear infinite",
-            margin: "0 auto 16px",
-          }}
-        />
-        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
-        <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "16px", margin: "0" }}>
-          {message}
-        </p>
+      <div style={{ textAlign: "center", width: "100%", maxWidth: "320px" }}>
+        
+        {readyUrl ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ 
+              background: "rgba(255,255,255,0.1)", 
+              padding: "24px", 
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,0.2)"
+            }}>
+              <h2 style={{ color: "white", fontSize: "20px", marginBottom: "12px", fontWeight: "bold" }}>
+                เชื่อมต่อสำเร็จบางส่วน!
+              </h2>
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "14px", lineHeight: "1.5", marginBottom: "20px" }}>
+                เพื่อความปลอดภัยและการล็อกอินที่สมบูรณ์ (โดยเฉพาะผู้ที่ใช้ Google Login) กรุณากดปุ่มด้านล่างเพื่อเปิดหน้าต่างในเบราว์เซอร์หลักของคุณ
+              </p>
+              <button 
+                onClick={handleOpenExternal}
+                style={{
+                  width: "100%",
+                  padding: "14px 20px",
+                  background: "#00B900",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "12px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 12px rgba(0, 185, 0, 0.3)"
+                }}
+              >
+                <ExternalLink size={20} />
+                เปิดในเบราว์เซอร์หลัก
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Loader2
+              style={{
+                width: "48px",
+                height: "48px",
+                color: "#3b82f6",
+                animation: "spin 1s linear infinite",
+                margin: "0 auto 16px",
+              }}
+            />
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "16px", margin: "0" }}>
+              {message}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
