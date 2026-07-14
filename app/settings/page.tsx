@@ -19,7 +19,8 @@ import {
   Key,
   ShieldCheck,
   CheckCircle2,
-  User
+  User,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/axios";
