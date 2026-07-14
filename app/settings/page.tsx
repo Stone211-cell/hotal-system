@@ -463,6 +463,32 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* ส่วนสำหรับผูกบัญชี LINE */}
+              <div className="mt-6 pt-6 border-t border-border/40 max-w-md">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <div className="bg-[#00B900] rounded-full p-1 w-6 h-6 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4"><path d="M22.5 10.5c0-4.69-4.7-8.5-10.5-8.5S1.5 5.81 1.5 10.5c0 4.2 3.82 7.76 8.92 8.4 1.05.13 2.11 1.48 1.94 2.87-.04.28-.18 1.04-.18 1.04-.1 0 .6-.2.87-.33.28-.14 4.54-2.6 6.13-4.48C21.4 15.68 22.5 13.2 22.5 10.5z"/></svg>
+                      </div>
+                      ตั้งค่าการแจ้งเตือนผ่าน LINE
+                    </h3>
+                    <p className="text-xs text-muted-foreground pr-4">
+                      เชื่อมต่อบัญชี LINE ของคุณเพื่อรับรายงานสรุปยอดรายรับ-รายจ่ายและแจ้งเตือนอื่นๆ โดยอัตโนมัติ
+                    </p>
+                  </div>
+                  <Button 
+                    className="bg-[#00B900] hover:bg-[#009900] text-white shrink-0"
+                    onClick={() => {
+                      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || "2010629520-Fu9pRVsX";
+                      window.open(`https://liff.line.me/${liffId}`, '_blank');
+                    }}
+                  >
+                    ผูกบัญชี LINE
+                  </Button>
+                </div>
+              </div>
+
               {!isOwner && (
                 <div className="bg-muted/40 p-4 border rounded-2xl flex items-center gap-3 text-sm max-w-md mt-4">
                   <Lock className="h-5 w-5 text-muted-foreground shrink-0" />
