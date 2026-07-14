@@ -177,7 +177,7 @@ export async function generateAndSendFinancialReport(
       await axios.post(LINE_API, { to: lineUserId, messages }, { headers });
     }
 
-    return { success: true, textMessage, chartUrl, m4aUrl };
+    return { success: true, textMessage, chartUrl: barChartUrl, m4aUrl };
 
   } catch (error) {
     console.error("[Report Service Error]:", error);
