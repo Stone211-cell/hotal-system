@@ -18,7 +18,12 @@ export async function GET() {
     // เฉพาะเจ้าของโรงแรม (OWNER) เท่านั้นที่มีสิทธิ์เข้าจัดการสมาชิกทีม
     if (member.role !== "OWNER") {
       return NextResponse.json(
-        { message: "สิทธิ์การเข้าถึงข้อมูลนี้เฉพาะเจ้าของโรงแรม (OWNER) เท่านั้น", hotelName: member.hotelName, success: false },
+        { 
+          message: "สิทธิ์การเข้าถึงข้อมูลนี้เฉพาะเจ้าของโรงแรม (OWNER) เท่านั้น", 
+          hotelName: member.hotelName, 
+          currentMemberId: member.id, // ส่งกลับไปเพื่อให้ STAFF ผูก LINE ได้
+          success: false 
+        },
         { status: 403 }
       );
     }
@@ -28,7 +33,12 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
-    return NextResponse.json({ data: members, hotelName: member.hotelName, success: true });
+    return NextResponse.json({ 
+      data: members, 
+      hotelName: member.hotelName, 
+      currentMemberId: member.id,
+      success: true 
+    });
   } catch (error) {
     console.error("[GET /api/members]", error);
     return NextResponse.json(

@@ -50,6 +50,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
   const [hotelInfo, setHotelInfo] = useState<HotelInfo | null>(null);
+  const [currentMemberId, setCurrentMemberId] = useState("");
 
   // Form states for adding staff
   const [inviteEmail, setInviteEmail] = useState("");
@@ -69,6 +70,7 @@ export default function SettingsPage() {
       if (membersJson.success) {
         setMembers(membersJson.data);
         setIsOwner(true); // If we successfully queried members, we are the OWNER
+        if (membersJson.currentMemberId) setCurrentMemberId(membersJson.currentMemberId);
         
         setHotelInfo({
           name: membersJson.hotelName || "โรงแรมของฉัน",
@@ -84,6 +86,7 @@ export default function SettingsPage() {
     } catch (err: any) {
       if (err.response?.status === 403) {
         setIsOwner(false);
+        if (err.response?.data?.currentMemberId) setCurrentMemberId(err.response?.data?.currentMemberId);
         setHotelInfo({
           name: err.response?.data?.hotelName || "โรงแรมของฉัน",
           description: "ระบบจัดการส่วนตัว",
@@ -463,9 +466,9 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* ส่วนสำหรับผูกบัญชี LINE */}
+              {/* ส่วนสำหรับผูกบัญชี LINE ด้วยรหัส */}
               <div className="mt-6 pt-6 border-t border-border/40 max-w-md">
-                <div className="flex items-start justify-between">
+                <div className="space-y-4">
                   <div className="space-y-1">
                     <h3 className="text-sm font-semibold flex items-center gap-2">
                       <div className="bg-[#00B900] rounded-full p-1 w-6 h-6 flex items-center justify-center">
@@ -474,18 +477,38 @@ export default function SettingsPage() {
                       ตั้งค่าการแจ้งเตือนผ่าน LINE
                     </h3>
                     <p className="text-xs text-muted-foreground pr-4">
-                      เชื่อมต่อบัญชี LINE ของคุณเพื่อรับรายงานสรุปยอดรายรับ-รายจ่ายและแจ้งเตือนอื่นๆ โดยอัตโนมัติ
+                      เชื่อมต่อบัญชี LINE ของคุณเพื่อรับรายงานสรุปยอดรายรับ-รายจ่ายและแจ้งเตือนอื่นๆ โดยอัตโนมัติ 
+                      (โดยการคัดลอกรหัสนี้ส่งให้บอทในแชท LINE)
                     </p>
                   </div>
-                  <Button 
-                    className="bg-[#00B900] hover:bg-[#009900] text-white shrink-0"
-                    onClick={() => {
-                      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || "2010629520-Fu9pRVsX";
-                      window.open(`https://liff.line.me/${liffId}`, '_blank');
-                    }}
-                  >
-                    ผูกบัญชี LINE
-                  </Button>
+                  
+                  {currentMemberId ? (
+                    <div className="bg-muted p-4 rounded-xl border flex flex-col items-center justify-center space-y-3">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">รหัสเชื่อมต่อของคุณ</span>
+                      <div className="text-2xl font-bold tracking-widest text-primary font-mono bg-background px-6 py-2 rounded-lg border shadow-sm">
+                        {currentMemberId.slice(-6).toUpperCase()}
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground mt-2">
+                        ให้พิมพ์ส่งหาบอทใน LINE ว่า:<br/>
+                        <span className="font-semibold text-foreground select-all mt-1 inline-block">ผูกบัญชี {currentMemberId.slice(-6).toUpperCase()}</span>
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="mt-2 text-xs"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`ผูกบัญชี ${currentMemberId.slice(-6).toUpperCase()}`);
+                          toast.success("คัดลอกข้อความแล้ว นำไปวางใน LINE ได้เลย!");
+                        }}
+                      >
+                        คัดลอกข้อความ
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="bg-muted p-4 rounded-xl border flex justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
               </div>
 

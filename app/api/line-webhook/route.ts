@@ -50,6 +50,28 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // ตรวจสอบคำสั่ง "ผูกบัญชี [รหัส]"
+          if (userMessage.startsWith("ผูกบัญชี ")) {
+            const code = userMessage.replace("ผูกบัญชี ", "").trim().toLowerCase();
+            if (code.length === 6) {
+              // ค้นหาบัญชีที่ลงท้ายด้วยรหัส 6 หลัก (case insensitive สำหรับ CUID ปกติเป็นตัวพิมพ์เล็ก)
+              const members = await prisma.hotelMember.findMany();
+              const matchedMember = members.find(m => m.id.slice(-6).toLowerCase() === code);
+              
+              if (matchedMember) {
+                await prisma.hotelMember.update({
+                  where: { id: matchedMember.id },
+                  data: { lineUserId: lineUserId }
+                });
+                await replyLine(replyToken, "✅ ผูกบัญชี LINE สำเร็จแล้ว!\n\nจากนี้ไประบบจะส่งรายงานรายเดือน และการแจ้งเตือนต่างๆ ให้คุณผ่านช่องทางนี้ครับ");
+                continue;
+              } else {
+                await replyLine(replyToken, "❌ รหัสผูกบัญชีไม่ถูกต้อง หรือหาบัญชีไม่พบ\n\nโปรดตรวจสอบรหัสจากหน้า 'ตั้งค่า' บนเว็บไซต์อีกครั้งครับ");
+                continue;
+              }
+            }
+          }
+
           // ถ้าไม่ใช่คำสั่งรายงาน ให้ตอบกลับตาม Keyword ปกติ
           let replyText = DEFAULT_REPLY;
           for (const item of KEYWORD_REPLIES) {
