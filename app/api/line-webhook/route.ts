@@ -33,19 +33,28 @@ export async function POST(request: NextRequest) {
           const lineUserId = event.source.userId;
 
           // ตรวจสอบคำสั่งเรียกดูรายงาน (เฉพาะเจ้าของหอพักเท่านั้น)
-          if (userMessage.includes("รายรับรายเดือน") || userMessage.includes("รายเดือน") || userMessage.includes("สรุปยอด")) {
-            // ค้นหาว่าเป็นเจ้าของหอพักไหน
+          if (userMessage.includes("รายรับรายเดือน") || userMessage.includes("รายเดือน") || userMessage.includes("สรุปยอดเดือน")) {
             const member = await prisma.hotelMember.findFirst({ where: { lineUserId } });
             if (member && member.hotelId) {
               await generateAndSendFinancialReport(member.hotelId, lineUserId, "monthly", replyToken);
               continue;
             }
-          }
-
-          if (userMessage.includes("รายอาทิตย์") || userMessage.includes("รายสัปดาห์")) {
+          } else if (userMessage.includes("รายอาทิตย์") || userMessage.includes("รายสัปดาห์") || userMessage.includes("สรุปยอดสัปดาห์")) {
             const member = await prisma.hotelMember.findFirst({ where: { lineUserId } });
             if (member && member.hotelId) {
               await generateAndSendFinancialReport(member.hotelId, lineUserId, "weekly", replyToken);
+              continue;
+            }
+          } else if (userMessage.includes("รายรับรายวัน") || userMessage.includes("รายวัน") || userMessage.includes("ยอดวันนี้")) {
+            const member = await prisma.hotelMember.findFirst({ where: { lineUserId } });
+            if (member && member.hotelId) {
+              await generateAndSendFinancialReport(member.hotelId, lineUserId, "daily", replyToken);
+              continue;
+            }
+          } else if (userMessage.includes("รายรับทั้งหมด") || userMessage.includes("ยอดทั้งหมด") || userMessage.includes("สรุปยอดทั้งหมด")) {
+            const member = await prisma.hotelMember.findFirst({ where: { lineUserId } });
+            if (member && member.hotelId) {
+              await generateAndSendFinancialReport(member.hotelId, lineUserId, "all", replyToken);
               continue;
             }
           }

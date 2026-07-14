@@ -21,7 +21,7 @@ const headers = {
 export async function generateAndSendFinancialReport(
   hotelId: string, 
   lineUserId: string, 
-  reportType: "monthly" | "weekly" = "monthly",
+  reportType: "monthly" | "weekly" | "daily" | "all" = "monthly",
   replyToken?: string
 ) {
   try {
@@ -33,10 +33,20 @@ export async function generateAndSendFinancialReport(
       startDate = startOfMonth(now);
       endDate = endOfMonth(now);
       title = `สรุปยอดประจำเดือน ${format(now, "MM/yyyy")}`;
-    } else {
+    } else if (reportType === "weekly") {
       startDate = startOfWeek(now, { weekStartsOn: 1 });
       endDate = endOfWeek(now, { weekStartsOn: 1 });
       title = `สรุปยอดประจำสัปดาห์`;
+    } else if (reportType === "daily") {
+      // สำหรับรายวัน ใช้เวลา 00:00:00 ถึง 23:59:59 ของวันนี้
+      startDate = new Date(now.setHours(0, 0, 0, 0));
+      endDate = new Date(now.setHours(23, 59, 59, 999));
+      title = `สรุปยอดประจำวันที่ ${format(startDate, "dd/MM/yyyy")}`;
+    } else {
+      // ทั้งหมด (all) ใช้ตั้งแต่อดีตจนถึงปัจจุบัน
+      startDate = new Date(2000, 0, 1);
+      endDate = new Date(2100, 0, 1);
+      title = `สรุปยอดรายรับ-รายจ่ายทั้งหมด`;
     }
 
     // 1. คำนวณรายรับ (จาก Bill ที่จ่ายแล้ว)
